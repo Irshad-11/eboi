@@ -1,0 +1,40 @@
+{
+  "$schema": "https://eboi.vercel.app/book-import.schema.json",
+  "format_version": 1,
+  "slug": "the-quiet-ledger",
+  "title": "The Quiet Ledger",
+  "subtitle": "Bookkeeping for one-person businesses, in an hour a week",
+  "author": "Your Name",
+  "category": "Business",
+  "tags": ["bookkeeping", "small business", "money"],
+  "language": "English",
+  "page_count": 118,
+  "format": "PDF",
+  "file_size": "4.2 MB",
+  "description": "Most small businesses do not fail for lack of customers. They fail because nobody knows where the money went.\n\nThis book sets up a one-hour weekly routine: what to write down, where, and how to read it at the end of the month.",
+  "highlights": [
+    "A one-page weekly checklist",
+    "A simple ledger template you can copy",
+    "How to tell profit from cash in the bank"
+  ],
+  "table_of_contents": "1. Why one hour is enough\n2. The four numbers that matter\n3. The weekly routine\n4. Month end in twenty minutes\n5. When to hire an accountant",
+  "price": 220,
+  "old_price": null,
+  "offer_id": null,
+  "rating": 0,
+  "rating_count": 0,
+  "total_sells": 0,
+  "views": 0,
+  "release_date": "2026-10-15",
+  "is_featured": false,
+  "status": "draft",
+  "badge": "new",
+  "seo_title": null,
+  "seo_description": null,
+  "internal_file_note": "D:/eboi/books/the-quiet-ledger-FINAL.pdf",
+  "collections": ["start-a-side-business"],
+  "files": {
+    "cover": "the-quiet-ledger-cover.jpg",
+    "preview": "the-quiet-ledger-preview.pdf"
+  }
+}

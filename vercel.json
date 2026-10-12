@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["sin1"],
+  "redirects": [
+    { "source": "/book/:slug", "destination": "/books/:slug", "permanent": true },
+    { "source": "/collection/:slug", "destination": "/collections/:slug", "permanent": true },
+    { "source": "/books", "destination": "/shop", "permanent": true },
+    { "source": "/collections", "destination": "/shop", "permanent": true },
+    { "source": "/refund", "destination": "/terms", "permanent": true },
+    { "source": "/wishlist", "destination": "/my-list", "permanent": true }
+  ]
+}

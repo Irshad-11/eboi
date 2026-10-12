@@ -1,0 +1,723 @@
+/*
+ * eBoi design system
+ * ------------------
+ * One aesthetic: an editorial print shop. Warm paper, deep green ink, thick
+ * rules, sharp corners. Every page (the admin panel too) uses only the tokens
+ * below. Tailwind's default palette, radii, shadows and type sizes are wiped
+ * with `initial` so off-brand values cannot sneak in through a utility class.
+ *
+ * Token map
+ *   colour    paper (base) / ink + greens (text, structure) / ochre (offers and badges only)
+ *   type      serif = Newsreader (display + text, optical sizes), mono = IBM Plex Mono
+ *             (Book IDs, prices, labels). Bangla falls through to Hind Siliguri.
+ *   radius    0 by default. xs (2px) for inputs and tags, pill for badges only,
+ *             sheet (16px) for the top of mobile bottom sheets only.
+ *   shadow    hard, offset, no blur: printed objects stacked on paper.
+ *   spacing   Tailwind's 4px scale. Sections alternate loose (py-20/28) and
+ *             dense (py-10/12) to give the page a rhythm instead of one beat.
+ */
+
+@import "tailwindcss";
+
+@theme {
+  --color-*: initial;
+  /* Base */
+  --color-paper: #f4f0e6;
+  --color-paper-raised: #f9f6ee; /* inputs, sheets. Lighter paper, never pure white */
+  --color-paper-2: #ebe5d6; /* shaded bands */
+  --color-paper-3: #dcd3bf; /* hairlines on paper */
+  /* Text */
+  --color-ink: #14201a;
+  --color-ink-2: #3a4a41; /* secondary text, 8.6:1 on paper */
+  --color-ink-3: #5c6a61; /* captions, 5.1:1 on paper */
+  /* Greens: structure, primary actions, dark panels */
+  --color-green-950: #0a1f16;
+  --color-green-900: #0f2a1f;
+  --color-green-800: #163a2b;
+  --color-green-700: #1f4d3a;
+  --color-green-600: #2c6249;
+  --color-green-500: #3e7a5e;
+  --color-green-300: #94b8a3;
+  --color-green-100: #d9e5dc;
+  /* Accent: offers and badges ONLY */
+  --color-ochre: #b8862b;
+  --color-ochre-ink: #7a5712; /* ochre for text on paper, 5.6:1 */
+  --color-ochre-wash: #f0e2c2;
+  /* Feedback */
+  --color-rust: #9a3324;
+  --color-rust-wash: #f2dcd5;
+
+  --text-*: initial;
+  --text-mega: clamp(3.25rem, 1.9rem + 7.5vw, 8.25rem);
+  --text-mega--line-height: 0.88;
+  --text-mega--letter-spacing: -0.035em;
+  --text-display: clamp(2.5rem, 1.7rem + 4vw, 4.75rem);
+  --text-display--line-height: 0.95;
+  --text-display--letter-spacing: -0.03em;
+  --text-headline: clamp(1.875rem, 1.45rem + 1.9vw, 3rem);
+  --text-headline--line-height: 1.02;
+  --text-headline--letter-spacing: -0.02em;
+  --text-title: clamp(1.25rem, 1.12rem + 0.55vw, 1.625rem);
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.01em;
+  --text-lead: 1.1875rem;
+  --text-lead--line-height: 1.5;
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.6;
+  --text-small: 0.9375rem;
+  --text-small--line-height: 1.5;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1.3;
+  --text-label--letter-spacing: 0.12em;
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.3;
+  --text-micro--letter-spacing: 0.14em;
+  --text-price: 1.5rem;
+  --text-price--line-height: 1;
+
+  --radius-*: initial;
+  --radius-xs: 2px;
+  --radius-sheet: 16px;
+  --radius-pill: 999px;
+
+  --shadow-*: initial;
+  --shadow-cover: 3px 4px 0 0 rgb(15 42 31 / 0.88);
+  --shadow-cover-lift: 7px 9px 0 0 rgb(15 42 31 / 0.88);
+  --shadow-press: 3px 3px 0 0 var(--color-ink);
+  --shadow-print: 6px 6px 0 0 var(--color-green-900);
+  --shadow-sheet: 0 -14px 40px -18px rgb(10 31 22 / 0.5);
+
+  --ease-press: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-sheet: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Font variables come from next/font on <html>, so map them inline. */
+@theme inline {
+  --font-*: initial;
+  --font-serif: var(--font-newsreader), var(--font-hind), "Iowan Old Style", Georgia, serif;
+  --font-mono: var(--font-plex-mono), var(--font-hind), ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+/* ---------------------------------------------------------------- base --- */
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    font-family: var(--font-serif);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    font-optical-sizing: auto;
+    min-height: 100dvh;
+    /* Safety net only. Layouts are built to fit 360px without it. */
+    overflow-x: clip;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  ::selection {
+    background: var(--color-green-900);
+    color: var(--color-paper);
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-green-500);
+    outline-offset: 2px;
+  }
+
+  /* Bangla needs taller lines and no negative tracking, even in headlines. */
+  :lang(bn) {
+    letter-spacing: 0 !important;
+  }
+  :where(p, li, dd, span):lang(bn) {
+    line-height: 1.75;
+  }
+  :where(h1, h2, h3, h4):lang(bn) {
+    line-height: 1.3 !important;
+    font-weight: 600;
+  }
+
+  hr {
+    border: 0;
+    border-top: 1px solid var(--color-ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ---------------------------------------------------------- components --- */
+@layer components {
+  .container-x {
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 48rem) {
+    .container-x {
+      padding-inline: 1.5rem;
+    }
+  }
+  @media (min-width: 80rem) {
+    .container-x {
+      padding-inline: 2rem;
+    }
+  }
+
+  /* Small caps-style labels: Book IDs, section kickers, table heads. */
+  .label {
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    line-height: var(--text-label--line-height);
+    letter-spacing: var(--text-label--letter-spacing);
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .micro {
+    font-family: var(--font-mono);
+    font-size: var(--text-micro);
+    line-height: var(--text-micro--line-height);
+    letter-spacing: var(--text-micro--letter-spacing);
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* Rules: the main structural device instead of cards. */
+  .rule {
+    border-top: 3px solid var(--color-ink);
+  }
+  .rule-thin {
+    border-top: 1px solid var(--color-ink);
+  }
+  .rule-double {
+    border-top: 5px double var(--color-ink);
+  }
+  .rule-paper {
+    border-color: var(--color-paper);
+  }
+
+  /* Text link with a printed underline that thickens on hover. */
+  .link {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+    transition: text-decoration-thickness 120ms;
+  }
+  .link:hover {
+    text-decoration-thickness: 3px;
+  }
+
+  /* Buttons ------------------------------------------------------------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    min-height: 3rem;
+    padding: 0.55rem 1.25rem;
+    border: 2px solid var(--color-ink);
+    border-radius: 0;
+    font-family: var(--font-serif);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.15;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    transition:
+      transform 120ms var(--ease-press),
+      box-shadow 120ms var(--ease-press),
+      background-color 120ms;
+  }
+  /* Motion with meaning: the button lifts like a key, and presses back down. */
+  .btn:hover:not(:disabled) {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--shadow-press);
+  }
+  .btn:active:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--color-green-900);
+    border-color: var(--color-green-900);
+    color: var(--color-paper);
+  }
+  .btn-outline {
+    background: transparent;
+    color: var(--color-ink);
+  }
+  .btn-outline:hover:not(:disabled) {
+    background: var(--color-paper-raised);
+  }
+  .btn-on-dark {
+    background: var(--color-paper);
+    border-color: var(--color-paper);
+    color: var(--color-green-950);
+  }
+  .btn-on-dark:hover:not(:disabled) {
+    box-shadow: 3px 3px 0 0 var(--color-green-300);
+  }
+  /* Offers only. */
+  .btn-accent {
+    background: var(--color-ochre);
+    border-color: var(--color-green-950);
+    color: var(--color-green-950);
+  }
+  .btn-danger {
+    background: var(--color-rust);
+    border-color: var(--color-rust);
+    color: var(--color-paper);
+  }
+  .btn-quiet {
+    min-height: 2.75rem;
+    padding-inline: 0.25rem;
+    border-color: transparent;
+    background: transparent;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  .btn-quiet:hover:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+    text-decoration-thickness: 3px;
+  }
+  .btn-sm {
+    min-height: 2.75rem;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.9375rem;
+  }
+  .btn-block {
+    width: 100%;
+  }
+
+  /* Form controls ------------------------------------------------------- */
+  .field-label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    letter-spacing: var(--text-label--letter-spacing);
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--color-ink-2);
+  }
+  .field-hint {
+    margin-top: 0.35rem;
+    font-size: var(--text-small);
+    color: var(--color-ink-3);
+  }
+  .field-error {
+    margin-top: 0.35rem;
+    font-size: var(--text-small);
+    color: var(--color-rust);
+  }
+  .input,
+  .select,
+  .textarea {
+    display: block;
+    width: 100%;
+    min-height: 3rem;
+    padding: 0.6rem 0.8rem;
+    background: var(--color-paper-raised);
+    border: 1.5px solid var(--color-ink-3);
+    border-radius: var(--radius-xs);
+    color: var(--color-ink);
+    /* 17px keeps iOS from zooming into the field. */
+    font-size: 1.0625rem;
+    font-family: var(--font-serif);
+  }
+  .input:focus,
+  .select:focus,
+  .textarea:focus {
+    border-color: var(--color-green-700);
+    outline: 2px solid var(--color-green-500);
+    outline-offset: 1px;
+  }
+  .textarea {
+    min-height: 7rem;
+    line-height: 1.5;
+    resize: vertical;
+  }
+  .input-mono {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+  }
+  .select {
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--color-ink) 50%),
+      linear-gradient(135deg, var(--color-ink) 50%, transparent 50%);
+    background-position:
+      calc(100% - 1.15rem) 52%,
+      calc(100% - 0.8rem) 52%;
+    background-size: 0.35rem 0.35rem;
+    background-repeat: no-repeat;
+  }
+  .check {
+    width: 1.25rem;
+    height: 1.25rem;
+    accent-color: var(--color-green-900);
+  }
+
+  /* Book cover treatment: ONE crop (2:3), ONE shadow, ONE angle (flat). */
+  .cover {
+    position: relative;
+    aspect-ratio: 2 / 3;
+    overflow: hidden;
+    background: var(--color-green-800);
+    box-shadow: var(--shadow-cover);
+    transition:
+      transform 180ms var(--ease-press),
+      box-shadow 180ms var(--ease-press);
+  }
+  .cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  /* Spine: two solid strips, so a flat image reads as a bound object. */
+  .cover::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 4.5%;
+    background: rgb(10 31 22 / 0.22);
+    border-right: 1px solid rgb(244 240 230 / 0.22);
+    pointer-events: none;
+  }
+  /* Hovering a book "picks it up" off the shelf. */
+  .book-link:hover .cover,
+  .book-link:focus-visible .cover {
+    transform: translate(-3px, -4px);
+    box-shadow: var(--shadow-cover-lift);
+  }
+
+  /* Badges: the only pill shapes in the system. */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    height: 1.4rem;
+    padding-inline: 0.55rem;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-mono);
+    font-size: var(--text-micro);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-new {
+    background: var(--color-green-900);
+    color: var(--color-paper);
+  }
+  .badge-bestseller {
+    background: var(--color-ochre);
+    color: var(--color-green-950);
+  }
+  .badge-offer {
+    background: var(--color-ochre-wash);
+    color: var(--color-ochre-ink);
+    box-shadow: inset 0 0 0 1px var(--color-ochre);
+  }
+  .badge-demo {
+    background: transparent;
+    color: var(--color-ink-3);
+    box-shadow: inset 0 0 0 1px var(--color-ink-3);
+  }
+  .badge-draft {
+    background: var(--color-paper-2);
+    color: var(--color-ink-2);
+  }
+  .badge-live {
+    background: var(--color-green-100);
+    color: var(--color-green-800);
+  }
+
+  /* Prices: always mono, tabular, struck old price in a quieter tone. */
+  .price {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .price-was {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink-3);
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+  }
+
+  /* Colophon table with dotted leaders, like the back page of a book. */
+  .leader-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .leader-row::before {
+    content: "";
+    order: 1;
+    flex: 1;
+    min-width: 1rem;
+    border-bottom: 1.5px dotted var(--color-ink-3);
+    transform: translateY(-0.3em);
+  }
+  .leader-row > :last-child {
+    order: 2;
+    text-align: right;
+  }
+
+  /* Long-form text from the admin (About, Terms, descriptions). */
+  .prose-eboi {
+    max-width: 66ch;
+  }
+  .prose-eboi > * + * {
+    margin-top: 1em;
+  }
+  .prose-eboi h2,
+  .prose-eboi h3 {
+    margin-top: 1.8em;
+    font-size: var(--text-title);
+    line-height: var(--text-title--line-height);
+  }
+
+  /* Native <dialog>: a bottom sheet on phones, a squared modal from 768px. */
+  dialog.sheet {
+    margin: auto 0 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    padding: 0;
+    overflow: auto;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    border: 0;
+    border-top: 3px solid var(--color-ink);
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+    box-shadow: var(--shadow-sheet);
+    overscroll-behavior: contain;
+  }
+  dialog.sheet[open] {
+    animation: sheet-up 240ms var(--ease-sheet);
+  }
+  dialog.sheet::backdrop {
+    background: rgb(10 31 22 / 0.55);
+  }
+  @media (min-width: 48rem) {
+    dialog.sheet {
+      margin: auto;
+      width: calc(100% - 3rem);
+      max-width: 36rem;
+      max-height: 86dvh;
+      border: 2px solid var(--color-ink);
+      border-radius: 0;
+      box-shadow: var(--shadow-print);
+    }
+    dialog.sheet[open] {
+      animation: sheet-pop 160ms var(--ease-press);
+    }
+  }
+  .sheet-grip {
+    width: 2.75rem;
+    height: 4px;
+    margin: 0.6rem auto 0;
+    border-radius: var(--radius-pill);
+    background: var(--color-paper-3);
+  }
+  @media (min-width: 48rem) {
+    .sheet-grip {
+      display: none;
+    }
+  }
+
+  /* Preview viewer: best-effort copy friction. Not copy-proof, never claimed to be. */
+  .no-copy {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .no-copy canvas {
+    pointer-events: none;
+  }
+}
+
+/* ----------------------------------------------------------- utilities --- */
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------- keyframes --- */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes sheet-pop {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+/* "Copied" stamp feedback */
+@keyframes stamp {
+  0% {
+    transform: scale(1.35) rotate(-4deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.96) rotate(-4deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(-4deg);
+    opacity: 1;
+  }
+}
+.animate-stamp {
+  animation: stamp 260ms var(--ease-press) both;
+}
+
+/* ------------------------------------------------------------- splash --- */
+/*
+ * The splash is painted over the page, never instead of it: the real content
+ * renders underneath at full speed (LCP, SEO and crawlers are unaffected). An
+ * inline script in <head> adds html[data-splash] only on the first visit of a
+ * session and only when reduced motion is not requested.
+ */
+.splash {
+  display: none;
+}
+html[data-splash] .splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: var(--color-paper);
+  cursor: pointer;
+  animation: splash-out 260ms ease-in 1140ms forwards;
+}
+.splash svg {
+  width: min(62vw, 22rem);
+  height: auto;
+  overflow: visible;
+}
+.splash .wm-rule {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: wm-rule 420ms var(--ease-press) both;
+}
+.splash .wm-letter {
+  animation: wm-stamp 300ms var(--ease-press) both;
+}
+.splash .wm-letter:nth-child(1) {
+  animation-delay: 260ms;
+}
+.splash .wm-letter:nth-child(2) {
+  animation-delay: 360ms;
+}
+.splash .wm-letter:nth-child(3) {
+  animation-delay: 440ms;
+}
+.splash .wm-letter:nth-child(4) {
+  animation-delay: 520ms;
+}
+.splash .wm-dot {
+  animation: wm-dot 260ms var(--ease-press) 760ms both;
+}
+@keyframes wm-rule {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+/* Each letter lands like type pressed onto paper. */
+@keyframes wm-stamp {
+  from {
+    opacity: 0;
+    transform: translateY(-14%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes wm-dot {
+  from {
+    opacity: 0;
+    transform: translateY(-60%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* ---------------------------------------------------------------- print --- */
+@media print {
+  .preview-frame,
+  .no-print {
+    display: none !important;
+  }
+  .preview-print-note {
+    display: block !important;
+  }
+}
