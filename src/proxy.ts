@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/lib/supabase/database.types";
+import { cleanCountry, REGION_COOKIE } from "@/features/region/region";
 
 /**
  * 1. /admin: refreshes the Supabase session cookie and sends signed-out
@@ -8,15 +9,34 @@ import type { Database } from "@/lib/supabase/database.types";
  *    status again on the server, and RLS checks it in the database.
  * 2. Everything else: applies the manual redirects from Admin > SEO.
  *    The list is small, so it is cached in memory for a minute.
+ * 3. Shop pages: remembers the visitor's country in a cookie, for dollar
+ *    prices abroad. Pages stay cached; the browser reads the cookie.
  */
 export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return NextResponse.next();
-
   const { pathname } = request.nextUrl;
-  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) return adminGate(request, url, key);
-  return manualRedirect(request, url, key);
+  const admin = pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
+  if (url && key && admin) return adminGate(request, url, key);
+  const response = url && key ? await manualRedirect(request, url, key) : NextResponse.next();
+  return rememberCountry(request, response);
+}
+
+/**
+ * Vercel sends the visitor's country as x-vercel-ip-country. `?region=US`
+ * pins a country for testing (`?region=auto` unpins); a pinned value ends in "!".
+ */
+function rememberCountry(request: NextRequest, response: NextResponse): NextResponse {
+  const saved = request.cookies.get(REGION_COOKIE)?.value ?? "";
+  const param = request.nextUrl.searchParams.get("region");
+  let next: string | null = null;
+  if (param === "auto") next = cleanCountry(request.headers.get("x-vercel-ip-country")) ?? "";
+  else if (cleanCountry(param)) next = `${cleanCountry(param)}!`;
+  else if (!saved.endsWith("!")) next = cleanCountry(request.headers.get("x-vercel-ip-country"));
+  if (next != null && next !== saved) {
+    response.cookies.set(REGION_COOKIE, next, { path: "/", maxAge: 60 * 60 * 24 * 30, sameSite: "lax" });
+  }
+  return response;
 }
 
 async function adminGate(request: NextRequest, url: string, key: string) {

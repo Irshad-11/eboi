@@ -13,9 +13,11 @@ import type { BookRow } from "@/lib/supabase/database.types";
 import { coverUrl } from "@/features/books/cover";
 import { isValidImageUrl } from "@/lib/media";
 import { bookInputSchema, type BookFormValues } from "@/features/books/schema";
-import { IconExternal, IconPlus, IconTrash, IconUpload } from "@/components/icons";
+import { IconExternal, IconImage, IconPlus, IconTrash } from "@/components/icons";
 import { discardUploads, saveBook, type ReviewInput } from "../actions/books";
-import { checkCover, checkPreview, makePreviewThumbs, uploadCover, uploadPreview } from "../uploads";
+import { quickCreateCollection } from "../actions/collections";
+import { checkCover, checkPreview, coverFromPdf, makePreviewThumbs, uploadCover, uploadPreview } from "../uploads";
+import { DropZone, LinkFetcher, SourceTabs } from "./drop-zone";
 import { AdminCard } from "./admin-page-head";
 import { Field, Toggle } from "./field";
 import { Notice } from "./notice";
@@ -45,6 +47,7 @@ type State = {
   tags: string;
   price: string;
   old_price: string;
+  price_usd: string;
   offer_id: string;
   description: string;
   highlights: string;
@@ -76,6 +79,7 @@ function initial(b: BookRow | null, memberOf: string[]): State {
     tags: b?.tags.join(", ") ?? "",
     price: b ? String(b.price) : "",
     old_price: b?.old_price != null ? String(b.old_price) : "",
+    price_usd: b?.price_usd != null ? String(b.price_usd) : "",
     offer_id: b?.offer_id ?? "",
     description: b?.description ?? "",
     highlights: b?.highlights.join("\n") ?? "",
@@ -137,6 +141,14 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
   const [coverLink, setCoverLink] = useState(book?.cover_path && /^https?:\/\//i.test(book.cover_path) ? book.cover_path : "");
   const linkChanged = coverLink.trim() !== "" && coverLink.trim() !== (book?.cover_path ?? "");
   const [removePreview, setRemovePreview] = useState(false);
+  const [coverMode, setCoverMode] = useState<"file" | "link">(coverLink ? "link" : "file");
+  const [previewMode, setPreviewMode] = useState<"file" | "link">("file");
+  const [pdfCoverBusy, setPdfCoverBusy] = useState(false);
+  const [pdfCoverError, setPdfCoverError] = useState<string | null>(null);
+  const [cols, setCols] = useState(collections);
+  const [newCol, setNewCol] = useState("");
+  const [colBusy, setColBusy] = useState(false);
+  const [colMsg, setColMsg] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const set = <K extends keyof State>(k: K, v: State[K]) => setS((p) => ({ ...p, [k]: v }));
 
   const coverSrc = useMemo(() => {
@@ -163,6 +175,7 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
       table_of_contents: s.toc.replace(/\s+$/, ""),
       price: s.price,
       old_price: s.old_price || null,
+      price_usd: s.price_usd || null,
       offer_id: s.offer_id || null,
       rating: s.rating || 0,
       rating_count: s.rating_count || 0,
@@ -246,6 +259,46 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
     } finally {
       setBusy(null);
     }
+  }
+
+  async function pickCover(f: File) {
+    setCover({ file: f, check: await checkCover(f) });
+    setRemoveCover(false);
+    setCoverLink("");
+  }
+
+  async function pickPreview(f: File) {
+    setPreview({ file: f, check: await checkPreview(f) });
+    setRemovePreview(false);
+  }
+
+  /** "Use page 1 as the cover": renders the chosen preview PDF's first page. */
+  async function coverFromPreview() {
+    if (!preview?.file) return;
+    setPdfCoverBusy(true);
+    setPdfCoverError(null);
+    try {
+      await pickCover(await coverFromPdf(preview.file));
+      setCoverMode("file");
+    } catch (e) {
+      setPdfCoverError(e instanceof Error ? e.message : "Could not make a cover from this PDF.");
+    } finally {
+      setPdfCoverBusy(false);
+    }
+  }
+
+  async function addCollection() {
+    const name = newCol.trim();
+    if (name.length < 2) return setColMsg({ tone: "error", text: "Type a name with at least 2 characters." });
+    setColBusy(true);
+    setColMsg(null);
+    const res = await quickCreateCollection(name);
+    setColBusy(false);
+    if (!res.ok) return setColMsg({ tone: "error", text: res.error });
+    setCols((prev) => (prev.some((c) => c.id === res.data.id) ? prev : [...prev, res.data]));
+    setS((p) => (p.collections.includes(res.data.id) ? p : { ...p, collections: [...p.collections, res.data.id] }));
+    setNewCol("");
+    setColMsg({ tone: "ok", text: `${res.message ?? "Created."} Save the book to keep it in there.` });
   }
 
   const err = (k: string) => errors[k];
@@ -461,6 +514,9 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
               <Field label="Old price" htmlFor="b-old_price" hint="Shown struck through when no offer runs" error={err("old_price")}>
                 {input("old_price", { type: "number", min: 0, step: 1, inputMode: "numeric" })}
               </Field>
+              <Field label="Dollar price (US$)" htmlFor="b-price_usd" hint="For visitors outside Bangladesh, e.g. 2.99. Offers apply to it too." error={err("price_usd")}>
+                {input("price_usd", { type: "number", min: 0, step: 0.01, inputMode: "decimal", placeholder: "Optional" })}
+              </Field>
               <Field label="Linked offer" htmlFor="b-offer_id" error={err("offer_id")}>
                 <select id="b-offer_id" className="select" value={s.offer_id} onChange={(e) => set("offer_id", e.target.value)}>
                   <option value="">None</option>
@@ -476,56 +532,71 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
           </AdminCard>
 
           <AdminCard title="Cover">
-            <div className="flex gap-3">
-              <div className="cover-frame w-24 shrink-0">
+            <div className="flex items-start gap-3">
+              <div className="cover-frame w-20 shrink-0">
                 {/* Plain img: a local blob or admin-only cover the optimizer cannot fetch. */}
                 {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
                 {coverSrc && <img src={coverSrc} alt="" />}
+                {!coverSrc && (
+                  <span className="absolute inset-0 flex items-center justify-center text-text-3">
+                    <IconImage size={22} />
+                  </span>
+                )}
               </div>
-              <div className="min-w-0 space-y-2">
-                <label htmlFor="b-cover" className="btn btn-secondary btn-sm cursor-pointer">
-                  <IconUpload size={16} />
-                  {book?.cover_path || cover ? "Replace" : "Upload"}
-                </label>
-                <input
+              <div className="min-w-0 flex-1 space-y-2">
+                <SourceTabs mode={coverMode} onMode={setCoverMode} label="Cover: upload or link" />
+                <p className="text-sm text-text-3">Upload an image or paste a link to one.</p>
+                {book?.cover_path && !cover && (
+                  <Toggle id="b-remove-cover" label="Remove cover" checked={removeCover} onChange={setRemoveCover} />
+                )}
+              </div>
+            </div>
+            <div className="mt-3 space-y-2">
+              {coverMode === "file" ? (
+                <DropZone
                   id="b-cover"
-                  type="file"
                   accept={COVER.mimeTypes.join(",")}
-                  className="sr-only"
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return setCover(null);
-                    setCover({ file: f, check: await checkCover(f) });
-                    setRemoveCover(false);
-                  }}
+                  onFile={pickCover}
+                  fileName={cover?.file.name}
+                  label={book?.cover_path ? "Drag a new cover here" : "Drag the cover here"}
+                  inputLabel="Cover image"
+                  hint={`JPG, PNG, WebP or GIF, 2:3, ≥${COVER.minWidth}px wide, ≤4 MB`}
                 />
-                <p className="field-hint mt-0">JPG, PNG, WebP or GIF, 2:3, ≥{COVER.minWidth}px wide, ≤4 MB</p>
+              ) : (
                 <div>
-                  <label htmlFor="b-cover-link" className="text-sm font-medium text-text-2">
-                    Or paste an image link
+                  <label htmlFor="b-cover-link" className="sr-only">
+                    Cover image link
                   </label>
                   <input
                     id="b-cover-link"
                     type="url"
                     inputMode="url"
-                    className="input mt-1 h-10 min-h-10 text-sm"
-                    placeholder="https://…"
+                    className="input h-10 min-h-10 text-sm"
+                    placeholder="https://… (.jpg, .png, .webp or .gif)"
                     value={coverLink}
-                    disabled={Boolean(cover)}
                     onChange={(e) => {
                       setCoverLink(e.target.value);
+                      setCover(null);
                       setRemoveCover(false);
                     }}
                   />
-                  {linkChanged && !isValidImageUrl(coverLink.trim()) && <p className="field-error">Paste a full https:// image link.</p>}
+                  {linkChanged && !isValidImageUrl(coverLink.trim()) ? (
+                    <p className="field-error">Paste a full https:// image link.</p>
+                  ) : (
+                    <p className="field-hint">The image stays where it is hosted. GIFs work too.</p>
+                  )}
                 </div>
-                {cover && !cover.check.ok && <p className="field-error">{cover.check.error}</p>}
-                {cover?.check.ok && cover.check.warning && <p className="field-hint text-warn">{cover.check.warning}</p>}
-                {err("cover") && <p className="field-error">{err("cover")}</p>}
-                {book?.cover_path && !cover && (
-                  <Toggle id="b-remove-cover" label="Remove cover" checked={removeCover} onChange={setRemoveCover} />
-                )}
-              </div>
+              )}
+              {preview?.check.ok && !cover && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={coverFromPreview} disabled={pdfCoverBusy} data-loading={pdfCoverBusy}>
+                  <IconImage size={16} />
+                  Use page 1 of the preview PDF
+                </button>
+              )}
+              {pdfCoverError && <p className="field-error">{pdfCoverError}</p>}
+              {cover && !cover.check.ok && <p className="field-error">{cover.check.error}</p>}
+              {cover?.check.ok && cover.check.warning && <p className="field-hint text-warn">{cover.check.warning}</p>}
+              {err("cover") && <p className="field-error">{err("cover")}</p>}
             </div>
             <Field label="Cover alt text" htmlFor="b-cover_alt" hint="Describes the cover for screen readers and Google" error={err("cover_alt")} className="mt-3">
               {input("cover_alt")}
@@ -533,27 +604,35 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
           </AdminCard>
 
           <AdminCard title="Free preview">
-            <label htmlFor="b-preview" className="btn btn-secondary btn-sm cursor-pointer">
-              <IconUpload size={16} />
-              {book?.preview_path || preview ? "Replace PDF" : "Upload PDF"}
-            </label>
-            <input
-              id="b-preview"
-              type="file"
-              accept="application/pdf,.pdf"
-              className="sr-only"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (!f) return setPreview(null);
-                setPreview({ file: f, check: await checkPreview(f) });
-                setRemovePreview(false);
-              }}
-            />
-            <p className="field-hint">
-              First {PREVIEW.recommended}, max {PREVIEW.maxPages} pages and {PREVIEW.maxBytes / 1024 / 1024} MB
-            </p>
+            <div className="space-y-2">
+              <SourceTabs mode={previewMode} onMode={setPreviewMode} label="Preview PDF: upload or link" />
+              {previewMode === "file" ? (
+                <DropZone
+                  id="b-preview"
+                  accept="application/pdf,.pdf"
+                  onFile={pickPreview}
+                  fileName={preview?.file.name}
+                  label={book?.preview_path ? "Drag a new preview PDF here" : "Drag the preview PDF here"}
+                  inputLabel="Preview PDF"
+                  hint={`First ${PREVIEW.recommended}, max ${PREVIEW.maxPages} pages and ${PREVIEW.maxBytes / 1024 / 1024} MB`}
+                />
+              ) : (
+                <LinkFetcher id="b-preview-link" label="Preview PDF link" placeholder="https://… link to a PDF" kind="pdf" buttonLabel="Get PDF" onFile={pickPreview} />
+              )}
+            </div>
             {preview && !preview.check.ok && <p className="field-error">{preview.check.error}</p>}
-            {preview?.check.ok && <p className="field-hint text-brand">{preview.check.pages} pages, ready to upload</p>}
+            {preview?.check.ok && (
+              <div className="mt-2 rounded-md bg-brand-soft p-2.5 text-sm text-brand-ink">
+                <p className="font-medium">
+                  {preview.file.name}: {preview.check.pages} pages, ready. It uploads when you save, with page thumbnails.
+                </p>
+                {!cover && (
+                  <button type="button" className="mt-1.5 font-semibold underline underline-offset-2" onClick={coverFromPreview} disabled={pdfCoverBusy}>
+                    {pdfCoverBusy ? "Making the cover…" : "Use page 1 as the cover"}
+                  </button>
+                )}
+              </div>
+            )}
             {err("preview") && <p className="field-error">{err("preview")}</p>}
             {book?.preview_path && !preview && (
               <div className="mt-2 space-y-1">
@@ -566,9 +645,9 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
           </AdminCard>
 
           <AdminCard title="Collections">
-            {collections.length ? (
+            {cols.length > 0 && (
               <ul className="space-y-0.5">
-                {collections.map((c) => (
+                {cols.map((c) => (
                   <li key={c.id}>
                     <label className="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-md px-1 hover:bg-muted">
                       <input
@@ -582,11 +661,43 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
                   </li>
                 ))}
               </ul>
-            ) : (
-              <Link href="/admin/collections/new" className="link text-sm">
-                Create a collection
-              </Link>
             )}
+            <div className={cn(cols.length > 0 && "mt-3 border-t border-line pt-3")}>
+              <label htmlFor="b-new-collection" className="text-sm font-medium text-text-2">
+                New collection
+              </label>
+              <div className="mt-1 flex gap-2">
+                <input
+                  id="b-new-collection"
+                  className="input h-10 min-h-10 text-sm"
+                  placeholder="e.g. Eid reads"
+                  maxLength={80}
+                  value={newCol}
+                  onChange={(e) => setNewCol(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void addCollection();
+                    }
+                  }}
+                />
+                <button type="button" className="btn btn-secondary btn-sm h-10 shrink-0" onClick={addCollection} disabled={colBusy} data-loading={colBusy}>
+                  <IconPlus size={16} />
+                  Add
+                </button>
+              </div>
+              {colMsg ? (
+                <p className={colMsg.tone === "ok" ? "field-hint text-brand" : "field-error"}>{colMsg.text}</p>
+              ) : (
+                <p className="field-hint">
+                  Created and ticked for this book. Add an image and intro later in{" "}
+                  <Link href="/admin/collections" className="link">
+                    Collections
+                  </Link>
+                  .
+                </p>
+              )}
+            </div>
           </AdminCard>
 
           <AdminCard title="Shown on the site" description="Display values. Real numbers are in Analytics.">

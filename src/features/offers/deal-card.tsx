@@ -3,6 +3,7 @@ import { cn } from "@/lib/cn";
 import { formatPrice } from "@/lib/format";
 import { IconArrowRight, IconClock } from "@/components/icons";
 import { BookCover } from "@/features/books/components/book-cover";
+import { PriceText } from "@/features/books/components/price-tag";
 import { coverUrl } from "@/features/books/cover";
 import type { BookCard } from "@/features/books/types";
 import { Countdown } from "./countdown";
@@ -11,7 +12,7 @@ import type { ActiveOffer } from "./pricing";
 /** An offer: red discount, name, up to three covers, optional countdown. */
 export function DealCard({ offer, books, href, symbol }: { offer: ActiveOffer; books: BookCard[]; href: string; symbol: string }) {
   const label = offer.discount_type === "percent" ? `${Number(offer.value)}% off` : `${formatPrice(Number(offer.value), symbol)} off`;
-  const lowest = books.length ? Math.min(...books.map((b) => b.pricing.final)) : null;
+  const lowest = books.length ? books.reduce((a, b) => (b.pricing.final < a.pricing.final ? b : a)).pricing : null;
   return (
     <Link
       href={href}
@@ -44,7 +45,9 @@ export function DealCard({ offer, books, href, symbol }: { offer: ActiveOffer; b
         <div className="text-right">
           {lowest != null && (
             <p className="text-sm text-text-3">
-              From <span className="price-now text-base" data-sale="true">{formatPrice(lowest, symbol)}</span>
+              From <span className="price-now text-base" data-sale="true">
+                <PriceText pricings={[lowest]} />
+              </span>
             </p>
           )}
           <span className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-brand">

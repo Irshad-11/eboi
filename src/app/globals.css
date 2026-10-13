@@ -586,12 +586,115 @@
   dialog.dialog.promo-dialog {
     margin: auto;
     width: calc(100% - 2rem);
-    max-width: 26rem;
+    max-width: 24rem;
+    max-height: calc(100dvh - 2rem);
     border-radius: var(--radius-lg);
-    overflow: hidden auto;
+    overflow: hidden;
+  }
+  .promo-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 2 / 1;
+    max-height: 30dvh;
+    object-fit: cover;
+    background: var(--color-muted);
+  }
+  /* Short screens: drop the covers so the card never needs a scrollbar. */
+  @media (max-height: 40rem) {
+    .promo-books {
+      display: none;
+    }
+  }
+  .promo-timer {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 3px;
+    background: var(--color-sale);
+    transform-origin: left;
+    animation: promo-timer linear forwards;
+  }
+  .promo-timer[data-paused] {
+    animation-play-state: paused;
   }
   dialog.dialog.promo-dialog[open] {
     animation: pop 180ms var(--ease-out);
+  }
+
+  /* Announcement bar: slides down into its own space after load (pushes the
+     page, never covers it), then a soft glare sweeps across now and then. */
+  .notice-bar {
+    position: relative;
+    display: grid;
+    grid-template-rows: 0fr;
+    overflow: hidden;
+    animation: notice-down 800ms cubic-bezier(0.22, 1, 0.36, 1) 450ms forwards;
+  }
+  .notice-clip {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .notice-slide {
+    transform: translateY(-100%);
+    animation: notice-slide 800ms cubic-bezier(0.22, 1, 0.36, 1) 450ms forwards;
+  }
+  .notice-bar[data-closing] {
+    grid-template-rows: 1fr;
+    animation: notice-up 320ms ease-in forwards;
+  }
+  .notice-bar[data-closing] .notice-slide {
+    transform: none;
+    animation: none;
+  }
+  .notice-bar::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 30%;
+    pointer-events: none;
+    background: linear-gradient(100deg, transparent 0%, rgb(255 255 255 / 0) 25%, rgb(255 255 255 / 0.4) 50%, rgb(255 255 255 / 0) 75%, transparent 100%);
+    transform: translateX(-130%) skewX(-18deg);
+    animation: notice-glare 4.5s ease-in-out 1.5s infinite;
+  }
+  .notice-msg {
+    display: inline-block;
+    animation: notice-msg 450ms var(--ease-out);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .notice-bar::after {
+      display: none;
+    }
+  }
+
+  /* Book ID copied: a stamp over the blurred page. */
+  .copy-stamp-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    background: rgb(255 255 255 / 0.25);
+    backdrop-filter: blur(6px);
+    animation: fade-in 180ms ease-out;
+  }
+  .copy-stamp-layer[data-state="out"] {
+    opacity: 0;
+    transition: opacity 280ms ease-in;
+  }
+  .copy-stamp {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.875rem 1.75rem;
+    border: 4px double currentColor;
+    border-radius: var(--radius-md);
+    color: var(--color-brand);
+    background: rgb(255 255 255 / 0.9);
+    box-shadow: var(--shadow-lg);
+    transform: rotate(-8deg);
+    animation: stamp 520ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
   }
 
   /* Left drawer (mobile menu, mobile filters). */
@@ -696,6 +799,69 @@
   }
   to {
     transform: none;
+  }
+}
+@keyframes notice-down {
+  to {
+    grid-template-rows: 1fr;
+  }
+}
+@keyframes notice-up {
+  to {
+    grid-template-rows: 0fr;
+  }
+}
+@keyframes notice-slide {
+  to {
+    transform: none;
+  }
+}
+@keyframes notice-glare {
+  0% {
+    transform: translateX(-130%) skewX(-18deg);
+  }
+  45%,
+  100% {
+    transform: translateX(450%) skewX(-18deg);
+  }
+}
+@keyframes notice-msg {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes promo-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes stamp {
+  0% {
+    opacity: 0;
+    transform: scale(2.4) rotate(-16deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.92) rotate(-7deg);
+  }
+  75% {
+    transform: scale(1.04) rotate(-8deg);
+  }
+  100% {
+    transform: rotate(-8deg);
   }
 }
 @keyframes shimmer {

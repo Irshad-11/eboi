@@ -122,6 +122,15 @@
       "minimum": 0,
       "description": "Optional manual struck-through price. Must be higher than price."
     },
+    "price_usd": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 10000,
+      "description": "Optional dollar price for visitors outside Bangladesh. Leave out or null to show them the Taka price."
+    },
     "offer_id": {
       "type": [
         "string",

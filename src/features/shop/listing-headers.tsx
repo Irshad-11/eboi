@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { CategoryIcon, IconLayers } from "@/components/icons";
 import { BookCover } from "@/features/books/components/book-cover";
+import { PriceText } from "@/features/books/components/price-tag";
 import { coverUrl } from "@/features/books/cover";
 import type { BookCard } from "@/features/books/types";
 import type { CategoryItem } from "@/features/categories/queries";
@@ -60,9 +60,9 @@ const MOODS: Record<string, { box: string; muted: string }> = {
 };
 
 /** Collection pages: a coloured banner in the collection's mood, with its covers. */
-export function CollectionHeader({ name, intro, mood, books, symbol }: { name: string; intro: string; mood: string; books: BookCard[]; symbol: string }) {
+export function CollectionHeader({ name, intro, mood, books }: { name: string; intro: string; mood: string; books: BookCard[]; symbol?: string }) {
   const m = MOODS[mood] ?? MOODS.forest!;
-  const from = books.length ? Math.min(...books.map((b) => b.pricing.final)) : null;
+  const from = books.length ? books.reduce((a, b) => (b.pricing.final < a.pricing.final ? b : a)).pricing : null;
   return (
     <div className={cn("relative mt-3 overflow-hidden rounded-lg p-5 md:p-7", m.box)}>
       <div className="relative z-10 max-w-xl md:max-w-[55%]">
@@ -74,7 +74,12 @@ export function CollectionHeader({ name, intro, mood, books, symbol }: { name: s
         {intro && <p className="mt-2 text-base leading-relaxed">{intro}</p>}
         <p className={cn("mt-3 text-sm", m.muted)}>
           {books.length} {books.length === 1 ? "book" : "books"}
-          {from != null && ` · from ${formatPrice(from, symbol)}`}
+          {from != null && (
+            <>
+              {" · from "}
+              <PriceText pricings={[from]} />
+            </>
+          )}
         </p>
       </div>
       {books.length > 0 && (

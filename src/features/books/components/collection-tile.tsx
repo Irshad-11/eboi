@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
-import { formatPrice } from "@/lib/format";
 import { mediaUrl, skipOptimizer } from "@/lib/media";
 import { coverUrl } from "../cover";
+import { PriceText } from "./price-tag";
 import type { BookCard } from "../types";
 import { BookCover } from "./book-cover";
 
@@ -61,7 +61,6 @@ export function CollectionLead({
   intro,
   mood,
   books,
-  symbol,
 }: {
   slug: string;
   intro: string;
@@ -70,7 +69,7 @@ export function CollectionLead({
   symbol: string;
 }) {
   const style = MOOD_STYLES[mood] ?? MOOD_STYLES.forest!;
-  const from = books.length ? Math.min(...books.map((b) => b.pricing.final)) : null;
+  const from = books.length ? books.reduce((a, b) => (b.pricing.final < a.pricing.final ? b : a)).pricing : null;
   const bestOff = books.reduce((m, b) => (b.pricing.was && b.pricing.was > b.pricing.final ? Math.max(m, Math.round(((b.pricing.was - b.pricing.final) / b.pricing.was) * 100)) : m), 0);
   return (
     <Link href={`/collections/${slug}`} className={`group @container relative flex h-full min-h-[18rem] flex-col overflow-hidden rounded-lg p-5 ${style.box}`}>
@@ -78,7 +77,11 @@ export function CollectionLead({
         <span className="font-semibold">
           {books.length} {books.length === 1 ? "book" : "books"}
         </span>
-        {from != null && <span className={style.muted}>from {formatPrice(from, symbol)}</span>}
+        {from != null && (
+          <span className={style.muted}>
+            from <PriceText pricings={[from]} />
+          </span>
+        )}
         {bestOff > 0 && <span className="badge badge-sale">Up to {bestOff}% off</span>}
       </div>
       {intro && <p className="relative z-10 mt-3 line-clamp-5 max-w-[17rem] text-base leading-relaxed @xl:max-w-sm">{intro}</p>}

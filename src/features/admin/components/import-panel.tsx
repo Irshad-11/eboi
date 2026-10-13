@@ -5,9 +5,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { IMPORT } from "@/config/limits";
 import { IconUpload } from "@/components/icons";
+import { isValidImageUrl } from "@/lib/media";
 import { prepareImport, saveBook, discardUploads, type ImportPlan } from "../actions/books";
 import { checkCover, checkPreview, makePreviewThumbs, uploadCover, uploadPreview } from "../uploads";
 import { AdminCard } from "./admin-page-head";
+import { DropZone, LinkFetcher, SourceTabs } from "./drop-zone";
+import { JsonBuilder } from "./json-builder";
 import { Notice } from "./notice";
 
 type Log = { tone: "ok" | "error" | "info"; text: string };
@@ -18,7 +21,7 @@ type Log = { tone: "ok" | "error" | "info"; text: string };
  * folder, then the same saveBook() as the form runs. An array JSON imports
  * metadata for many books at once (no files).
  */
-export function ImportPanel() {
+export function ImportPanel({ collections = [], categories = [] }: { collections?: { slug: string; name: string }[]; categories?: string[] }) {
   const router = useRouter();
   const [json, setJson] = useState<unknown>(null);
   const [jsonName, setJsonName] = useState("");
@@ -28,21 +31,35 @@ export function ImportPanel() {
   const [hints, setHints] = useState<{ cover?: string; preview?: string }>({});
   const [log, setLog] = useState<Log[]>([]);
   const [busy, setBusy] = useState(false);
+  const [pasted, setPasted] = useState("");
+  const [coverMode, setCoverMode] = useState<"file" | "link">("file");
+  const [coverLink, setCoverLink] = useState("");
+  const [previewMode, setPreviewMode] = useState<"file" | "link">("file");
 
   const add = (l: Log) => setLog((prev) => [...prev, l]);
 
   async function onJson(file: File | undefined) {
+    if (!file) return;
+    if (file.size > IMPORT.maxJsonBytes) return add({ tone: "error", text: "That JSON file is too large." });
+    await loadJson(await file.text(), file.name);
+  }
+
+  /** From a file, pasted text or the builder below: check it and show what will happen. */
+  async function loadJson(raw: string | unknown, name: string) {
     setPlan(null);
     setLog([]);
     setJson(null);
-    if (!file) return;
-    if (file.size > IMPORT.maxJsonBytes) return add({ tone: "error", text: "That JSON file is too large." });
     try {
-      const data = JSON.parse(await file.text());
+      const data = typeof raw === "string" ? JSON.parse(raw) : raw;
       setJson(data);
-      setJsonName(file.name);
+      setJsonName(name);
       if (!Array.isArray(data)) {
         setHints({ cover: data?.files?.cover, preview: data?.files?.preview });
+        // A cover given as a full link in the JSON is used as the link.
+        if (typeof data?.files?.cover === "string" && isValidImageUrl(data.files.cover)) {
+          setCoverMode("link");
+          setCoverLink(data.files.cover);
+        }
         const res = await prepareImport(data);
         if (!res.ok) {
           add({ tone: "error", text: res.error });
@@ -54,11 +71,11 @@ export function ImportPanel() {
         add({ tone: "info", text: `${data.length} books in this file. Files cannot be attached in a bulk import; covers and previews are kept for books that already have them.` });
       }
     } catch {
-      add({ tone: "error", text: "That file is not valid JSON." });
+      add({ tone: "error", text: "That is not valid JSON. Check for a missing comma or quote." });
     }
   }
 
-  async function importOne(data: unknown, files: { cover: File | null; preview: File | null }): Promise<boolean> {
+  async function importOne(data: unknown, files: { cover: File | null; preview: File | null; coverLink?: string }): Promise<boolean> {
     const prep = await prepareImport(data);
     if (!prep.ok) {
       add({ tone: "error", text: `${(data as { slug?: string })?.slug ?? "?"}: ${prep.error} ${Object.entries(prep.fieldErrors ?? {}).map(([k, v]) => `${k}: ${v}`).join("; ")}` });
@@ -84,7 +101,7 @@ export function ImportPanel() {
         bookCode: p.bookCode,
         values: p.values,
         collectionIds: p.collectionIds,
-        cover: uploaded.cover ? { path: uploaded.cover } : null,
+        cover: uploaded.cover ? { path: uploaded.cover } : files.coverLink ? { path: files.coverLink } : null,
         preview: uploaded.preview ? { path: uploaded.preview } : null,
         thumbs: uploaded.thumbs ?? null,
         reviews: p.reviews ?? null,
@@ -109,7 +126,8 @@ export function ImportPanel() {
       for (const item of json) if (await importOne(item, { cover: null, preview: null })) ok++;
       add({ tone: ok === json.length ? "ok" : "info", text: `${ok} of ${json.length} imported.` });
     } else {
-      await importOne(json, { cover, preview });
+      const link = coverMode === "link" && isValidImageUrl(coverLink.trim()) ? coverLink.trim() : undefined;
+      await importOne(json, { cover: coverMode === "file" ? cover : null, preview, coverLink: link });
     }
     setBusy(false);
     router.refresh();
@@ -117,22 +135,61 @@ export function ImportPanel() {
 
   const mismatch = (hint: string | undefined, file: File | null) => hint && file && hint !== file.name;
 
-  const fileClass =
-    "block w-full text-sm text-text-2 file:mr-3 file:h-10 file:cursor-pointer file:rounded-md file:border file:border-line-2 file:bg-white file:px-3 file:text-sm file:font-medium file:text-text hover:file:border-brand hover:file:text-brand disabled:opacity-50";
+  const bulk = Array.isArray(json);
 
   return (
     <div className="grid gap-4 lg:grid-cols-12">
       <AdminCard title="Import books" className="lg:col-span-7">
         <div className="space-y-5">
-          <Step n={1} title="Book JSON" hint="One book (object) with files, or many books (array) without files.">
-            <input type="file" accept="application/json,.json" aria-label="Book JSON file" onChange={(e) => onJson(e.target.files?.[0])} className={fileClass} />
+          <Step n={1} title="Book JSON" hint="One book (object) with files, or many books (array) without files. Make one with the form below.">
+            <DropZone accept="application/json,.json" onFile={onJson} fileName={jsonName || null} label="Drag the .json file here" inputLabel="Book JSON file" />
+            <details className="mt-2">
+              <summary className="cursor-pointer text-sm font-medium text-brand">Paste JSON text instead</summary>
+              <label htmlFor="imp-paste" className="sr-only">
+                Book JSON text
+              </label>
+              <textarea id="imp-paste" rows={6} className="textarea mt-2 font-mono text-sm" placeholder='{ "title": "…", "slug": "…", "price": 200 }' value={pasted} onChange={(e) => setPasted(e.target.value)} />
+              <button type="button" className="btn btn-secondary btn-sm mt-2" disabled={!pasted.trim()} onClick={() => loadJson(pasted, "Pasted JSON")}>
+                Use pasted JSON
+              </button>
+            </details>
           </Step>
-          <Step n={2} title="Cover (optional)" hint={hints.cover ? `The JSON expects “${hints.cover}”.` : "JPG or PNG, 2:3."}>
-            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" aria-label="Cover image" disabled={Array.isArray(json)} onChange={(e) => setCover(e.target.files?.[0] ?? null)} className={fileClass} />
-            {mismatch(hints.cover, cover) && <p className="mt-1.5 text-sm text-warn">File name differs from the JSON. Check it is the right cover.</p>}
+          <Step n={2} title="Cover (optional)" hint={hints.cover && !isValidImageUrl(hints.cover) ? `The JSON expects “${hints.cover}”.` : "Upload an image (2:3) or paste a link to one."}>
+            <div className="space-y-2">
+              <SourceTabs mode={coverMode} onMode={setCoverMode} label="Cover: upload or link" />
+              {coverMode === "file" ? (
+                <DropZone accept="image/jpeg,image/png,image/webp,image/gif" onFile={setCover} fileName={cover?.name} disabled={bulk} label="Drag the cover here" inputLabel="Cover image" />
+              ) : (
+                <div>
+                  <label htmlFor="imp-cover-link" className="sr-only">
+                    Cover image link
+                  </label>
+                  <input id="imp-cover-link" type="url" inputMode="url" className="input h-10 min-h-10 text-sm" placeholder="https://… (.jpg, .png, .webp or .gif)" value={coverLink} disabled={bulk} onChange={(e) => setCoverLink(e.target.value)} />
+                  {coverLink.trim() && !isValidImageUrl(coverLink.trim()) && <p className="field-error">Paste a full https:// image link.</p>}
+                </div>
+              )}
+            </div>
+            {coverMode === "file" && mismatch(hints.cover, cover) && <p className="mt-1.5 text-sm text-warn">File name differs from the JSON. Check it is the right cover.</p>}
           </Step>
-          <Step n={3} title="Preview PDF (optional)" hint={hints.preview ? `The JSON expects “${hints.preview}”.` : "The first pages only."}>
-            <input type="file" accept="application/pdf,.pdf" aria-label="Preview PDF" disabled={Array.isArray(json)} onChange={(e) => setPreview(e.target.files?.[0] ?? null)} className={fileClass} />
+          <Step n={3} title="Preview PDF (optional)" hint={hints.preview ? `The JSON expects “${hints.preview}”.` : "The first pages only. Upload it or paste a link."}>
+            <div className="space-y-2">
+              <SourceTabs mode={previewMode} onMode={setPreviewMode} label="Preview PDF: upload or link" />
+              {previewMode === "file" ? (
+                <DropZone accept="application/pdf,.pdf" onFile={setPreview} fileName={preview?.name} disabled={bulk} label="Drag the preview PDF here" inputLabel="Preview PDF" />
+              ) : (
+                <LinkFetcher
+                  id="imp-preview-link"
+                  label="Preview PDF link"
+                  placeholder="https://… link to a PDF"
+                  kind="pdf"
+                  buttonLabel="Get PDF"
+                  onFile={(f) => {
+                    setPreview(f);
+                    setPreviewMode("file");
+                  }}
+                />
+              )}
+            </div>
             {mismatch(hints.preview, preview) && <p className="mt-1.5 text-sm text-warn">File name differs from the JSON. Check it is the right preview.</p>}
           </Step>
 
@@ -195,6 +252,17 @@ export function ImportPanel() {
           </li>
         </ul>
       </AdminCard>
+
+      <div className="lg:col-span-12">
+        <JsonBuilder
+          collections={collections}
+          categories={categories}
+          onUse={(data, name) => {
+            void loadJson(data, name);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />
+      </div>
     </div>
   );
 }

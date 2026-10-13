@@ -11,6 +11,8 @@ import {
   linkSchema,
   paymentMethodSchema,
   POPUP_FREQUENCIES,
+  type PopupFrequency,
+  usdPaymentMethodSchema,
   stepSchema,
   type FeatureFlags,
   type HomeSection,
@@ -80,6 +82,9 @@ export const getSettings = cache(async (): Promise<SiteSettings> => {
     announcement_bg: color(d.announcement_bg, D.announcement_bg),
     announcement_fg: color(d.announcement_fg, D.announcement_fg),
     announcement_image: nullableStr(d.announcement_image),
+    announcement_abroad: str(d.announcement_abroad, ""),
+    announcement_code: str(d.announcement_code, ""),
+    announcement_ends_at: nullableStr(d.announcement_ends_at),
     hero_interval: num(d.hero_interval, D.hero_interval),
     popup_enabled: bool(d.popup_enabled, false),
     popup_title: str(d.popup_title, ""),
@@ -90,12 +95,18 @@ export const getSettings = cache(async (): Promise<SiteSettings> => {
     popup_show_latest: bool(d.popup_show_latest, true),
     popup_delay: num(d.popup_delay, D.popup_delay),
     popup_autoclose: num(d.popup_autoclose, 0),
-    popup_frequency: typeof d.popup_frequency === "string" && d.popup_frequency in POPUP_FREQUENCIES ? (d.popup_frequency as keyof typeof POPUP_FREQUENCIES) : "session",
+    popup_frequency: typeof d.popup_frequency === "string" && d.popup_frequency in POPUP_FREQUENCIES ? (d.popup_frequency as PopupFrequency) : "visits",
     popup_version: num(d.popup_version, 0),
     features: features(d.features),
     trending_searches: Array.isArray(d.trending_searches) ? (d.trending_searches as unknown[]).filter((t): t is string => typeof t === "string") : [],
     payment_methods: parseList(paymentMethodSchema, d.payment_methods, D.payment_methods),
     how_to_buy_steps: parseList(stepSchema, d.how_to_buy_steps, D.how_to_buy_steps),
+    abroad_enabled: bool(d.abroad_enabled, false),
+    usd_rate: Number(d.usd_rate ?? 0) || 0,
+    usd_payment_methods: parseList(usdPaymentMethodSchema, d.usd_payment_methods),
+    usd_payment_note: str(d.usd_payment_note, ""),
+    whatsapp_abroad_template: str(d.whatsapp_abroad_template, "") || D.whatsapp_abroad_template,
+    whatsapp_abroad_list_template: str(d.whatsapp_abroad_list_template, "") || D.whatsapp_abroad_list_template,
     header_links: parseList(linkSchema, d.header_links),
     footer_columns: parseList(footerColumnSchema, d.footer_columns, D.footer_columns),
     social_links: parseList(linkSchema, d.social_links),
@@ -131,6 +142,12 @@ export type ClientSettings = Pick<
   | "how_to_buy_steps"
   | "features"
   | "trending_searches"
+  | "abroad_enabled"
+  | "usd_rate"
+  | "usd_payment_methods"
+  | "usd_payment_note"
+  | "whatsapp_abroad_template"
+  | "whatsapp_abroad_list_template"
 >;
 
 export function toClientSettings(s: SiteSettings): ClientSettings {
@@ -144,5 +161,11 @@ export function toClientSettings(s: SiteSettings): ClientSettings {
     how_to_buy_steps: s.how_to_buy_steps.map((st) => ({ title: fillTokens(st.title, s), body: fillTokens(st.body, s) })),
     features: s.features,
     trending_searches: s.trending_searches,
+    abroad_enabled: s.abroad_enabled,
+    usd_rate: s.usd_rate,
+    usd_payment_methods: s.usd_payment_methods,
+    usd_payment_note: s.usd_payment_note,
+    whatsapp_abroad_template: s.whatsapp_abroad_template || s.whatsapp_template,
+    whatsapp_abroad_list_template: s.whatsapp_abroad_list_template || s.whatsapp_list_template,
   };
 }

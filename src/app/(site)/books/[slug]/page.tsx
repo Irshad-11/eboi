@@ -3,7 +3,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { SECTIONS } from "@/config/analytics";
 import { absoluteUrl } from "@/lib/env";
-import { formatCompact, formatDate, formatPrice } from "@/lib/format";
+import { formatCompact, formatDate } from "@/lib/format";
 import { langOf } from "@/lib/bangla";
 import { mediaUrl } from "@/lib/media";
 import { htmlToText } from "@/lib/rich-text";
@@ -12,11 +12,12 @@ import { getCategorySlugMap } from "@/features/categories/queries";
 import { getSettings } from "@/features/settings/queries";
 import { coverUrl } from "@/features/books/cover";
 import { DiscountBadge, StatusBadge } from "@/features/books/components/book-badges";
-import { PriceTag } from "@/features/books/components/price-tag";
+import { PriceTag, PriceText } from "@/features/books/components/price-tag";
 import { BookCover } from "@/features/books/components/book-cover";
 import { Rating } from "@/features/books/components/rating";
 import { PreviewButton } from "@/features/books/components/preview-button";
 import { ProductRow } from "@/features/books/components/product-row";
+import { BookIdChip } from "@/features/book-detail/book-id";
 import { Gallery } from "@/features/book-detail/gallery";
 import { ProductTabs, type Tab } from "@/features/book-detail/product-tabs";
 import { ShareButton } from "@/features/book-detail/share-button";
@@ -75,15 +76,14 @@ export default async function BookPage({ params }: Props) {
   const byAuthor = f.more_by_author && book.author ? all.filter((b) => b.author === book.author && b.id !== book.id).slice(0, 12) : [];
   // Buy together: this book plus the two closest matches that are not already in the author row.
   const bundle = f.bundle ? [book, ...related.filter((b) => !byAuthor.some((a) => a.id === b.id)).slice(0, 2)] : [];
-  const bundleTotal = bundle.reduce((n, b) => n + b.pricing.final, 0);
-  const bundleWas = bundle.reduce((n, b) => n + (b.pricing.was ?? b.pricing.final), 0);
+  const bundleSaves = bundle.some((b) => b.pricing.was != null);
   const msgBook = toMessageBook(book);
   const readerBook = { ...msgBook, page_count: book.page_count, preview_page_count: book.preview_page_count };
   const path = `/books/${book.slug}`;
   const catSlug = catMap.get(book.category);
   const catPath = catSlug ? `/category/${catSlug}` : "/shop";
   const offer = book.pricing.offer;
-  const save = book.pricing.was != null ? book.pricing.was - book.pricing.final : 0;
+  const save = book.pricing.was != null && book.pricing.was > book.pricing.final;
   const hasPreview = Boolean(book.preview_path);
   const thumbs = book.preview_thumbs.map((t) => mediaUrl(t)!).filter(Boolean);
 
@@ -206,7 +206,10 @@ export default async function BookPage({ params }: Props) {
           </TrackSection>
 
           <TrackSection name={SECTIONS.detailBuyBox} as="div" bookId={book.id} className="min-w-0">
-            <StatusBadge badge={book.badge} />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <StatusBadge badge={book.badge} />
+              <BookIdChip code={book.book_code} />
+            </div>
             <h1 lang={langOf(book.title)} className="mt-1.5 text-xl leading-snug font-semibold md:text-2xl">
               {book.title}
             </h1>
@@ -242,7 +245,11 @@ export default async function BookPage({ params }: Props) {
                 <PriceTag pricing={book.pricing} symbol={symbol} size="lg" />
                 <DiscountBadge pricing={book.pricing} symbol={symbol} />
               </div>
-              {save > 0 && <p className="mt-1 text-sm font-medium text-sale">You save {formatPrice(save, symbol)}</p>}
+              {save && (
+                <p className="mt-1 text-sm font-medium text-sale">
+                  You save <PriceText pricings={[book.pricing]} kind="save" />
+                </p>
+              )}
               {offer?.end_at && offer.show_countdown && (
                 <p className="mt-1 inline-flex items-center gap-1 text-sm text-text-2">
                   <IconClock size={15} className="text-sale" />
@@ -342,8 +349,8 @@ export default async function BookPage({ params }: Props) {
               <div className="rounded-md bg-muted p-4 md:w-72">
                 <p className="text-sm text-text-2">Total for {bundle.length} books</p>
                 <p className="mt-0.5 flex items-baseline gap-2">
-                  <span className="text-xl font-bold text-text tnum">{formatPrice(bundleTotal, symbol)}</span>
-                  {bundleWas > bundleTotal && <span className="price-was text-sm">{formatPrice(bundleWas, symbol)}</span>}
+                  <PriceText pricings={bundle.map((b) => b.pricing)} className="text-xl font-bold text-text tnum" />
+                  {bundleSaves && <PriceText pricings={bundle.map((b) => b.pricing)} kind="was" className="price-was text-sm" />}
                 </p>
                 <BundleButton books={bundle.map(toMessageBook)} section={SECTIONS.detailBuyBox} className="btn-block mt-3" />
               </div>

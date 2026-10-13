@@ -414,4 +414,27 @@ alter table public.site_settings add column if not exists trending_searches text
 -- Banner slides can show their text on top of the image.
 alter table public.banners add column if not exists overlay_text boolean not null default false;
 
+-- -----------------------------------------------------------------------------
+-- Visitors outside Bangladesh: dollar prices, dollar payments, abroad message
+-- -----------------------------------------------------------------------------
+alter table public.books add column if not exists price_usd numeric(10, 2);
+alter table public.books drop constraint if exists books_price_usd_check;
+alter table public.books add constraint books_price_usd_check check (price_usd is null or price_usd >= 0);
+grant select (price_usd) on public.books to anon;
+
+alter table public.site_settings add column if not exists abroad_enabled boolean not null default false;
+alter table public.site_settings add column if not exists usd_rate numeric(10, 2) not null default 0;
+alter table public.site_settings add column if not exists usd_payment_methods jsonb not null default '[]'::jsonb;
+alter table public.site_settings add column if not exists usd_payment_note text not null default '';
+alter table public.site_settings add column if not exists whatsapp_abroad_template text not null default '';
+alter table public.site_settings add column if not exists whatsapp_abroad_list_template text not null default '';
+
+-- Announcement bar: coupon code, countdown, separate text for visitors abroad.
+alter table public.site_settings add column if not exists announcement_code text not null default '';
+alter table public.site_settings add column if not exists announcement_ends_at timestamptz;
+alter table public.site_settings add column if not exists announcement_abroad text not null default '';
+
+-- Pop-up: new default is first visit, then every 5th visit.
+update public.site_settings set popup_frequency = 'visits' where popup_frequency = 'always';
+
 -- Done.

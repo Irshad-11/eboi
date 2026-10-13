@@ -42,6 +42,8 @@ export const bookInputSchema = z
     table_of_contents: z.string().trim().max(TEXT.tocMax).default(""),
     price: money,
     old_price: money.nullish().transform((v) => v ?? null),
+    /** Dollar price for visitors outside Bangladesh. Empty = they see the taka price. */
+    price_usd: z.coerce.number().min(0, "Cannot be negative").max(10000).nullish().transform((v) => (v ? Math.round(v * 100) / 100 : null)),
     offer_id: z.uuid().nullish().transform((v) => v ?? null),
     rating: z.coerce.number().min(0).max(5).default(0),
     rating_count: z.coerce.number().int().min(0).default(0),

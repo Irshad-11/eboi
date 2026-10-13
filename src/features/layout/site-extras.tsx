@@ -8,6 +8,7 @@ import { IconArrowUp, IconClose, IconWhatsApp } from "@/components/icons";
 import { useModalState } from "@/components/ui/dialog";
 import { PriceTag } from "@/features/books/components/price-tag";
 import type { BookLite } from "@/features/books/types";
+import type { PopupFrequency } from "@/features/settings/schema";
 import { useShop } from "./shop-context";
 import { whatsappLink } from "@/features/whatsapp/message";
 
@@ -25,13 +26,47 @@ export type PopupProps = {
   books: BookLite[];
   delay: number;
   autoclose: number;
-  frequency: "session" | "day" | "always";
+  frequency: PopupFrequency;
 };
 
 const POPUP_KEY = "eboi_popup";
+const VISITS_KEY = "eboi_visits";
+/** A new visit starts after 30 minutes away (the usual analytics rule). */
+const VISIT_GAP = 30 * 60 * 1000;
+const EVERY = 5;
 
-function alreadySeen(version: number, frequency: PopupProps["frequency"]): boolean {
-  if (frequency === "always") return false;
+type VisitLog = { v: number; n: number; at: number; shown: number };
+
+/**
+ * Counts visits in this browser and says whether the pop-up is due:
+ * on the first visit, then on every 5th visit after it (1st, 6th, 11th…).
+ * A changed pop-up (new version) starts the count again.
+ */
+function dueByVisits(version: number): boolean {
+  try {
+    const saved = JSON.parse(localStorage.getItem(VISITS_KEY) ?? "null") as VisitLog | null;
+    const log: VisitLog = saved && saved.v === version ? saved : { v: version, n: 0, at: 0, shown: 0 };
+    const now = Date.now();
+    if (now - log.at > VISIT_GAP) log.n += 1;
+    log.at = now;
+    localStorage.setItem(VISITS_KEY, JSON.stringify(log));
+    return log.n % EVERY === 1 && log.shown !== log.n;
+  } catch {
+    return false;
+  }
+}
+
+function markShownByVisits(version: number) {
+  try {
+    const log = JSON.parse(localStorage.getItem(VISITS_KEY) ?? "null") as VisitLog | null;
+    if (log && log.v === version) localStorage.setItem(VISITS_KEY, JSON.stringify({ ...log, shown: log.n }));
+  } catch {
+    // ignore
+  }
+}
+
+function alreadySeen(version: number, frequency: PopupFrequency): boolean {
+  if (frequency === "visits") return !dueByVisits(version);
   try {
     const store = frequency === "session" ? sessionStorage : localStorage;
     const raw = store.getItem(POPUP_KEY);
@@ -44,8 +79,8 @@ function alreadySeen(version: number, frequency: PopupProps["frequency"]): boole
   }
 }
 
-function markSeen(version: number, frequency: PopupProps["frequency"]) {
-  if (frequency === "always") return;
+function markSeen(version: number, frequency: PopupFrequency) {
+  if (frequency === "visits") return markShownByVisits(version);
   try {
     const store = frequency === "session" ? sessionStorage : localStorage;
     store.setItem(POPUP_KEY, `${version}|${new Date().toDateString()}`);
@@ -54,49 +89,42 @@ function markSeen(version: number, frequency: PopupProps["frequency"]) {
   }
 }
 
+/** A small, clean card: image, title, a line of text, one button. Never scrolls. */
 export function PromoPopup(p: PopupProps) {
-  const { currency_symbol } = useShop();
   const ref = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
-  const [left, setLeft] = useState(p.autoclose);
   const [hold, setHold] = useState(false);
   useModalState(ref, open);
 
   useEffect(() => {
     if (alreadySeen(p.version, p.frequency)) return;
-    const t = setTimeout(() => {
-      setLeft(p.autoclose);
+    let t: ReturnType<typeof setTimeout>;
+    // Never on top of something the visitor opened (preview, order, menu): wait until it is closed.
+    const show = () => {
+      if (document.querySelector("dialog[open]")) {
+        t = setTimeout(show, 1500);
+        return;
+      }
       setOpen(true);
-    }, Math.max(0, p.delay) * 1000);
+      // Counted as shown as soon as it appears, so a reload does not bring it back.
+      markSeen(p.version, p.frequency);
+    };
+    t = setTimeout(show, Math.max(0, p.delay) * 1000);
     return () => clearTimeout(t);
-  }, [p.version, p.frequency, p.delay, p.autoclose]);
+  }, [p.version, p.frequency, p.delay]);
 
-  const close = () => {
-    setOpen(false);
-    markSeen(p.version, p.frequency);
-  };
-
-  // Optional auto-close, paused while the mouse is over the pop-up.
-  useEffect(() => {
-    if (!open || p.autoclose <= 0 || hold) return;
-    const t = setTimeout(() => {
-      if (left <= 1) {
-        setOpen(false);
-        markSeen(p.version, p.frequency);
-      } else setLeft(left - 1);
-    }, 1000);
-    return () => clearTimeout(t);
-  }, [open, left, hold, p.autoclose, p.version, p.frequency]);
+  const close = () => setOpen(false);
 
   const external = /^https?:\/\//.test(p.link);
+  const ctaClass = "btn btn-lg btn-block bg-sale text-white hover:bg-sale-hover";
   const cta =
     p.buttonLabel && p.link ? (
       external ? (
-        <a href={p.link} target="_blank" rel="noopener noreferrer" className="btn btn-lg btn-block bg-sale text-white hover:bg-sale-hover" onClick={close}>
+        <a href={p.link} target="_blank" rel="noopener noreferrer" className={ctaClass} onClick={close}>
           {p.buttonLabel}
         </a>
       ) : (
-        <Link href={p.link} className="btn btn-lg btn-block bg-sale text-white hover:bg-sale-hover" onClick={close}>
+        <Link href={p.link} className={ctaClass} onClick={close}>
           {p.buttonLabel}
         </Link>
       )
@@ -106,7 +134,8 @@ export function PromoPopup(p: PopupProps) {
     <dialog
       ref={ref}
       className="dialog promo-dialog"
-      aria-labelledby="promo-title"
+      aria-labelledby={p.title ? "promo-title" : undefined}
+      aria-label={p.title ? undefined : "Notice"}
       onClose={close}
       onCancel={(e) => {
         e.preventDefault();
@@ -116,61 +145,52 @@ export function PromoPopup(p: PopupProps) {
       onPointerEnter={(e) => e.pointerType === "mouse" && setHold(true)}
       onPointerLeave={(e) => e.pointerType === "mouse" && setHold(false)}
     >
-      <div className="relative">
-        {p.image ? (
-          // eslint-disable-next-line @next/next/no-img-element -- admin image or GIF, shown as it is
-          <img src={p.image} alt="" className="block max-h-[45vh] w-full bg-muted object-cover" />
-        ) : (
-          <div className="h-2 bg-sale" aria-hidden="true" />
-        )}
-        <button type="button" onClick={close} className="absolute top-2 right-2 inline-flex size-9 items-center justify-center rounded-full bg-white/95 text-text shadow-md hover:bg-white" aria-label="Close">
-          <IconClose size={18} />
-        </button>
-      </div>
-      <div className="px-5 pt-4 pb-5">
+      <button type="button" onClick={close} className="absolute top-2 right-2 z-10 inline-flex size-9 items-center justify-center rounded-full bg-white/95 text-text shadow-md hover:bg-white" aria-label="Close">
+        <IconClose size={18} />
+      </button>
+      {p.image && (
+        // eslint-disable-next-line @next/next/no-img-element -- admin image or GIF, shown as it is
+        <img src={p.image} alt="" className="promo-image" />
+      )}
+      <div className="promo-body px-5 pt-5 pb-5 text-center">
         {p.title && (
-          <h2 id="promo-title" className="text-xl font-bold text-sale">
+          <h2 id="promo-title" className="pr-6 pl-6 text-xl leading-snug font-bold">
             {p.title}
           </h2>
         )}
-        {p.body && <p className="mt-1.5 text-base whitespace-pre-line text-text-2">{p.body}</p>}
+        {p.body && <p className="mt-1.5 line-clamp-3 text-base text-text-2">{p.body}</p>}
         {p.books.length > 0 && (
-          <ul className="mt-4 grid grid-cols-3 gap-3">
+          <ul className="promo-books mt-4 flex justify-center gap-3">
             {p.books.slice(0, 3).map((b) => (
-              <li key={b.id}>
-                <Link href={`/books/${b.slug}`} onClick={close} className="group block">
-                  <div className="cover-frame">
+              <li key={b.id} className="w-[4.5rem]">
+                <Link href={`/books/${b.slug}`} onClick={close} className="block" title={b.title}>
+                  <span className="cover-frame block">
                     {b.coverUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element -- small cover thumbnails in a pop-up
-                      <img src={b.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                      <img src={b.coverUrl} alt={b.title} className="absolute inset-0 h-full w-full object-cover" />
                     ) : (
-                      <span className="absolute inset-0 flex items-end bg-brand p-2 text-xs font-semibold text-white">{b.title}</span>
+                      <span lang={langOf(b.title)} className="absolute inset-0 flex items-end bg-brand p-1.5 text-xs font-semibold text-white">
+                        {b.title}
+                      </span>
                     )}
-                  </div>
-                  <p lang={langOf(b.title)} className="mt-1.5 line-clamp-2 text-sm leading-snug font-medium group-hover:text-brand">
-                    {b.title}
-                  </p>
-                  <PriceTag pricing={b.pricing} symbol={currency_symbol} size="sm" />
+                  </span>
+                  <PriceTag pricing={b.pricing} size="sm" className="mt-1 justify-center" />
                 </Link>
               </li>
             ))}
           </ul>
         )}
-        {cta && <div className="mt-5">{cta}</div>}
-        {!cta && (
-          <button type="button" onClick={close} className="btn btn-secondary btn-block mt-5">
-            Continue shopping
+        <div className="mt-5 space-y-1">
+          {cta}
+          <button type="button" onClick={close} className={cta ? "btn btn-ghost btn-block text-text-3" : "btn btn-secondary btn-block"}>
+            {cta ? "Not now" : "Continue shopping"}
           </button>
-        )}
-        {p.autoclose > 0 && (
-          <div className="mt-3" aria-live="off">
-            <div className="h-1 overflow-hidden rounded-full bg-muted">
-              <div className="h-full bg-sale transition-[width] duration-1000 ease-linear" style={{ width: `${(left / p.autoclose) * 100}%` }} />
-            </div>
-            <p className="mt-1 text-center text-xs text-text-3">{hold ? "Paused" : `Closes in ${left}s`}</p>
-          </div>
-        )}
+        </div>
       </div>
+      {p.autoclose > 0 && open && (
+        // Optional auto-close: the line runs out, then the pop-up closes. Paused while the mouse is over it.
+        <span className="promo-timer" data-paused={hold || undefined} style={{ animationDuration: `${p.autoclose}s` }} onAnimationEnd={close} aria-hidden="true" />
+      )}
     </dialog>
   );
 }

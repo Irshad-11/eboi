@@ -34,11 +34,11 @@ export function TrustStrip({ responseTime, payments }: { responseTime: string; p
   );
 }
 
-/** The shop in numbers: copies sold, rating, catalogue size, reply time. Real figures only. */
+/** The shop in numbers: copies sold, rating, catalogue size, reply time. Real figures only, no "happy customers" claims. */
 export function StatsStrip({ stats, responseTime }: { stats: { books: number; sold: number; ratings: number; avg: number }; responseTime: string }) {
   if (!stats.books) return null;
   const items = [
-    stats.sold > 0 && { value: `${formatCompact(stats.sold)}+`, label: "happy readers" },
+    stats.sold > 0 && { value: `${formatCompact(stats.sold)}+`, label: "copies sold" },
     stats.avg > 0 && { value: `${stats.avg.toFixed(1)}★`, label: `average from ${formatCompact(stats.ratings)} ratings` },
     { value: String(stats.books), label: stats.books === 1 ? "book to choose from" : "books to choose from" },
     { value: responseTime, label: "typical reply time" },

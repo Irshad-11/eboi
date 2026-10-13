@@ -33,9 +33,23 @@ export type Pricing = {
   was: number | null;
   offer: AppliedOffer | null;
   savePercent: number | null;
+  /**
+   * Dollar price for visitors outside Bangladesh, when the book has one.
+   * Offers and old prices carry over by the same ratio as the taka price.
+   */
+  usd: { final: number; was: number | null } | null;
 };
 
-export type PriceableBook = { id: string; price: number; old_price: number | null; offer_id: string | null };
+export type PriceableBook = { id: string; price: number; old_price: number | null; offer_id: string | null; price_usd?: number | null };
+
+/** Same discount ratio as the taka price, rounded to cents. */
+function usdPrice(book: PriceableBook, base: number, final: number, was: number | null): Pricing["usd"] {
+  const usd = book.price_usd == null ? null : Number(book.price_usd);
+  if (usd == null || !Number.isFinite(usd) || usd <= 0) return null;
+  const cents = (n: number) => Math.round(n * 100) / 100;
+  const ratio = base > 0 ? final / base : 1;
+  return { final: cents(usd * ratio), was: was != null && base > 0 ? cents((usd * was) / base) : null };
+}
 
 export function isOfferLive(o: { start_at: string; end_at: string | null }, now = Date.now()): boolean {
   return new Date(o.start_at).getTime() <= now && (!o.end_at || new Date(o.end_at).getTime() > now);
@@ -85,6 +99,7 @@ export function priceBook(
       was: base,
       offer: { id, title, banner_text, end_at, show_countdown, discount_type, value: Number(value) },
       savePercent: base > 0 ? Math.round(((base - best.final) / base) * 100) : null,
+      usd: usdPrice(book, base, best.final, base),
     };
   }
 
@@ -96,6 +111,7 @@ export function priceBook(
     was,
     offer: null,
     savePercent: was ? Math.round(((was - base) / was) * 100) : null,
+    usd: usdPrice(book, base, base, was),
   };
 }
 

@@ -1,5 +1,6 @@
 import { formatPrice } from "@/lib/format";
 import { TEMPLATE_TOKENS } from "@/features/settings/schema";
+import { formatUsd, localPrice, localTotal } from "@/features/region/region";
 import type { Pricing } from "@/features/offers/pricing";
 
 /**
@@ -9,12 +10,18 @@ import type { Pricing } from "@/features/offers/pricing";
 
 export type MessageBook = { title: string; book_code: string; slug: string; pricing: Pricing };
 
-/** "৳200 (was ৳250, Monsoon Week offer)" */
-export function priceLine(p: Pricing, symbol: string): string {
-  const now = formatPrice(p.final, symbol);
-  if (p.was == null) return now;
+/** Visitor context: dollar prices and [Country] for visitors outside Bangladesh. */
+export type MessageRegion = { abroad: boolean; rate: number; country: string };
+const HOME: MessageRegion = { abroad: false, rate: 0, country: "" };
+
+/** "৳200 (was ৳250, Monsoon Week offer)", or "$2.40 (was $3, …)" abroad. */
+export function priceLine(p: Pricing, symbol: string, region: MessageRegion = HOME): string {
+  const l = localPrice(p, region.abroad, region.rate);
+  const fmt = (n: number) => (l.usd ? formatUsd(n) : formatPrice(n, symbol));
+  const now = fmt(l.final);
+  if (l.was == null) return now;
   const why = p.offer ? `, ${p.offer.title} offer` : "";
-  return `${now} (was ${formatPrice(p.was, symbol)}${why})`;
+  return `${now} (was ${fmt(l.was)}${why})`;
 }
 
 function fill(template: string, values: Record<string, string>): string {
@@ -23,24 +30,32 @@ function fill(template: string, values: Record<string, string>): string {
   return out.trim();
 }
 
-export function buildSingleMessage(template: string, book: MessageBook, symbol: string, siteUrl: string): string {
+export function buildSingleMessage(template: string, book: MessageBook, symbol: string, siteUrl: string, region: MessageRegion = HOME): string {
   return fill(template, {
     [TEMPLATE_TOKENS.title]: book.title,
     [TEMPLATE_TOKENS.id]: book.book_code,
-    [TEMPLATE_TOKENS.price]: priceLine(book.pricing, symbol),
+    [TEMPLATE_TOKENS.price]: priceLine(book.pricing, symbol, region),
     [TEMPLATE_TOKENS.url]: `${siteUrl}/books/${book.slug}`,
+    [TEMPLATE_TOKENS.country]: region.country,
   });
 }
 
-export function buildListMessage(template: string, books: MessageBook[], symbol: string, siteUrl: string): string {
-  const lines = books.map((b, i) => `${i + 1}. ${b.title} (${b.book_code}) ${priceLine(b.pricing, symbol)}`);
-  const total = books.reduce((sum, b) => sum + b.pricing.final, 0);
+export function buildListMessage(template: string, books: MessageBook[], symbol: string, siteUrl: string, region: MessageRegion = HOME): string {
+  const total = localTotal(
+    books.map((b) => b.pricing),
+    region.abroad,
+    region.rate,
+  );
+  // One currency for the whole message: dollars only when every book has a dollar price.
+  const lineRegion = total.usd ? region : { ...region, abroad: false };
+  const lines = books.map((b, i) => `${i + 1}. ${b.title} (${b.book_code}) ${priceLine(b.pricing, symbol, lineRegion)}`);
   const codes = books.map((b) => b.book_code).join(",");
   return fill(template, {
     [TEMPLATE_TOKENS.list]: lines.join("\n"),
-    [TEMPLATE_TOKENS.total]: formatPrice(total, symbol),
+    [TEMPLATE_TOKENS.total]: total.usd ? formatUsd(total.final) : formatPrice(total.final, symbol),
     // A shareable list link: the shop owner can open it and see the covers.
     [TEMPLATE_TOKENS.url]: `${siteUrl}/my-list?books=${codes}`,
+    [TEMPLATE_TOKENS.country]: region.country,
     // Single-book tokens are cleared if someone reuses them by mistake.
     [TEMPLATE_TOKENS.title]: "",
     [TEMPLATE_TOKENS.id]: "",

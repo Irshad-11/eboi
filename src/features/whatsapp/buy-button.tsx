@@ -4,9 +4,9 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { IconWhatsApp } from "@/components/icons";
 import { track } from "@/features/analytics/client";
-import { useShop, useSiteUrl } from "@/features/layout/shop-context";
-import { buildListMessage, buildSingleMessage, type MessageBook } from "./message";
+import type { MessageBook } from "./message";
 import { OrderDialog } from "./order-dialog";
+import { useOrderMessage } from "./use-order-message";
 
 type Props = {
   book: MessageBook & { id: string };
@@ -18,10 +18,8 @@ type Props = {
 
 /** Primary call to action on every book: opens the order dialog. */
 export function BuyButton({ book, section, label = "Order on WhatsApp", size = "md", className }: Props) {
-  const shop = useShop();
-  const siteUrl = useSiteUrl();
   const [open, setOpen] = useState(false);
-  const message = buildSingleMessage(shop.whatsapp_template, book, shop.currency_symbol, siteUrl);
+  const message = useOrderMessage().single(book);
 
   return (
     <>
@@ -43,10 +41,8 @@ export function BuyButton({ book, section, label = "Order on WhatsApp", size = "
 
 /** "Buy together": one WhatsApp order for several books (the list message template). */
 export function BundleButton({ books, section, className }: { books: (MessageBook & { id: string })[]; section: string; className?: string }) {
-  const shop = useShop();
-  const siteUrl = useSiteUrl();
   const [open, setOpen] = useState(false);
-  const message = buildListMessage(shop.whatsapp_list_template, books, shop.currency_symbol, siteUrl);
+  const message = useOrderMessage().list(books);
   return (
     <>
       <button

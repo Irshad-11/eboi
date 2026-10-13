@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useState } from "react";
 import { SECTIONS } from "@/config/analytics";
-import { formatPrice } from "@/lib/format";
 import { IconClose, IconHeart, IconTrash, IconWhatsApp } from "@/components/icons";
 import { track } from "@/features/analytics/client";
-import { useShop, useSiteUrl } from "@/features/layout/shop-context";
+import { useShop } from "@/features/layout/shop-context";
+import { useMoney } from "@/features/region/use-region";
 import { CompactCard } from "@/features/books/components/compact-card";
 import type { BookLite } from "@/features/books/types";
-import { buildListMessage } from "@/features/whatsapp/message";
 import { OrderDialog } from "@/features/whatsapp/order-dialog";
+import { useOrderMessage } from "@/features/whatsapp/use-order-message";
 import { addToList, clearList, removeFromList, useMyList } from "./store";
 import { useBooksByIds } from "./use-books";
 
@@ -71,11 +71,12 @@ export function MyListView() {
 
 export function ListWithSend({ books, removable = false, onClear }: { books: BookLite[]; removable?: boolean; onClear?: () => void }) {
   const shop = useShop();
-  const siteUrl = useSiteUrl();
+  const money = useMoney();
   const [open, setOpen] = useState(false);
-  const total = books.reduce((s, b) => s + b.pricing.final, 0);
-  const before = books.reduce((s, b) => s + (b.pricing.was ?? b.pricing.final), 0);
-  const message = buildListMessage(shop.whatsapp_list_template, books, shop.currency_symbol, siteUrl);
+  const sum = money.total(books.map((b) => b.pricing));
+  const total = sum.final;
+  const before = sum.was;
+  const message = useOrderMessage().list(books);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
@@ -111,12 +112,12 @@ export function ListWithSend({ books, removable = false, onClear }: { books: Boo
           {before > total && (
             <div className="flex justify-between">
               <dt className="text-text-3">Discount</dt>
-              <dd className="text-sale tnum">−{formatPrice(before - total, shop.currency_symbol)}</dd>
+              <dd className="text-sale tnum">−{money.fmt(Math.round((before - total) * 100) / 100, sum.usd)}</dd>
             </div>
           )}
           <div className="flex justify-between border-t border-line pt-2 text-md font-semibold">
             <dt>Total</dt>
-            <dd className="tnum">{formatPrice(total, shop.currency_symbol)}</dd>
+            <dd className="tnum">{money.fmt(total, sum.usd)}</dd>
           </div>
         </dl>
         <button

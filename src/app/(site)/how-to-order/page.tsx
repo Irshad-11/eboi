@@ -8,6 +8,7 @@ import { RichText } from "@/components/rich-text";
 import { CopyButton } from "@/components/copy-button";
 import { OrderSteps } from "@/features/journey/order-steps";
 import { IconWhatsApp, IconWallet } from "@/components/icons";
+import { AbroadPayment } from "@/features/region/abroad-payment";
 
 // Must be a literal for Next.js static analysis. Keep in sync with PUBLIC_REVALIDATE_SECONDS.
 export const revalidate = 300;
@@ -58,6 +59,8 @@ export default async function HowToOrderPage() {
             </ul>
           </section>
         )}
+
+        <AbroadPayment className="p-5 md:p-8" />
 
         {s.how_to_order_content && (
           <section className="rounded-lg border border-line bg-white p-5 md:p-8">

@@ -18,6 +18,11 @@ import { sortBooks } from "@/features/books/catalog";
 import { FloatingTools, PromoPopup, RecentSalesToast } from "./site-extras";
 import type { HeaderNav, NavItem } from "./nav";
 
+/** A countdown that already ran out hides the bar (the browser re-checks every second). */
+function isPast(iso: string | null): boolean {
+  return iso != null && Date.parse(iso) <= Date.now();
+}
+
 /** Announcement bar, header, footer, providers and trackers for every public page. */
 export async function SiteChrome({ children }: { children: ReactNode }) {
   const [settings, categories, collections, offers] = await Promise.all([getSettings(), getCategories(), getCollections(), getLiveOffers()]);
@@ -37,6 +42,7 @@ export async function SiteChrome({ children }: { children: ReactNode }) {
     links: settings.header_links,
     hasOffers: offers.length > 0,
   };
+  const announcementEnded = isPast(settings.announcement_ends_at);
   const footerCategories = categories.filter((c) => c.count > 0).map((c) => ({ label: c.name, url: `/category/${c.slug}` }));
 
   return (
@@ -49,9 +55,12 @@ export async function SiteChrome({ children }: { children: ReactNode }) {
           {!isSupabaseConfigured && (
             <p className="bg-sale px-4 py-2 text-center text-sm text-white">Supabase is not connected. Fill in .env and restart.</p>
           )}
-          {settings.announcement_active && (settings.announcement || settings.announcement_image) && (
+          {settings.announcement_active && (settings.announcement || settings.announcement_image) && !announcementEnded && (
             <AnnouncementBar
               text={settings.announcement}
+              abroadText={settings.announcement_abroad}
+              code={settings.announcement_code}
+              endsAt={settings.announcement_ends_at}
               link={settings.announcement_link}
               dismissible={settings.announcement_dismissible}
               bg={settings.announcement_bg}
@@ -59,7 +68,7 @@ export async function SiteChrome({ children }: { children: ReactNode }) {
               image={mediaUrl(settings.announcement_image)}
             />
           )}
-          <Header nav={nav} whatsappNumber={settings.whatsapp_number} siteName={settings.site_name} />
+          <Header nav={nav} whatsappNumber={settings.whatsapp_number} siteName={settings.site_name} quickLinks={settings.footer_columns} />
           <main id="main">{children}</main>
           <Footer settings={settings} categories={footerCategories} />
           {settings.popup_enabled && (settings.popup_title || settings.popup_body || settings.popup_image || latest.length > 0) && (

@@ -2,6 +2,37 @@
 -- Every statement stands alone, so it works in the Supabase SQL editor.
 -- Images are links (Unsplash photos, a Giphy GIF): nothing to upload.
 -- Remove later with Admin > Demo data and storage > Delete all demo data.
+-- Make sure the columns this demo uses exist (same as update-01, safe to repeat).
+alter table public.banners add column if not exists overlay_text boolean not null default false;
+alter table public.site_settings add column if not exists announcement_bg text not null default '#d42d2d';
+alter table public.site_settings add column if not exists announcement_fg text not null default '#ffffff';
+alter table public.site_settings add column if not exists announcement_image text;
+alter table public.site_settings add column if not exists hero_interval integer not null default 5;
+alter table public.site_settings add column if not exists popup_enabled boolean not null default false;
+alter table public.site_settings add column if not exists popup_title text not null default '';
+alter table public.site_settings add column if not exists popup_body text not null default '';
+alter table public.site_settings add column if not exists popup_image text;
+alter table public.site_settings add column if not exists popup_button_label text not null default '';
+alter table public.site_settings add column if not exists popup_link text not null default '';
+alter table public.site_settings add column if not exists popup_show_latest boolean not null default true;
+alter table public.site_settings add column if not exists popup_delay integer not null default 2;
+alter table public.site_settings add column if not exists popup_autoclose integer not null default 0;
+alter table public.site_settings add column if not exists popup_frequency text not null default 'session';
+alter table public.site_settings add column if not exists popup_version bigint not null default 0;
+alter table public.site_settings add column if not exists features jsonb not null default '{}'::jsonb;
+alter table public.site_settings add column if not exists trending_searches text[] not null default '{}';
+alter table public.books add column if not exists price_usd numeric(10, 2);
+grant select (price_usd) on public.books to anon;
+alter table public.site_settings add column if not exists abroad_enabled boolean not null default false;
+alter table public.site_settings add column if not exists usd_rate numeric(10, 2) not null default 0;
+alter table public.site_settings add column if not exists usd_payment_methods jsonb not null default '[]'::jsonb;
+alter table public.site_settings add column if not exists usd_payment_note text not null default '';
+alter table public.site_settings add column if not exists whatsapp_abroad_template text not null default '';
+alter table public.site_settings add column if not exists whatsapp_abroad_list_template text not null default '';
+alter table public.site_settings add column if not exists announcement_code text not null default '';
+alter table public.site_settings add column if not exists announcement_ends_at timestamptz;
+alter table public.site_settings add column if not exists announcement_abroad text not null default '';
+
 delete from public.events where is_demo;
 delete from public.sales_log where is_demo;
 delete from public.banners where is_demo;
@@ -125,6 +156,9 @@ insert into public.books (id, title, subtitle, slug, author, category, tags, lan
 
 update public.books set cover_alt = title || ' by ' || author || ', book cover' where is_demo;
 
+-- Dollar prices for visitors outside Bangladesh: 200 taka becomes 1.99 dollars.
+update public.books set price_usd = ceil(price / 100.0) - 0.01 where is_demo;
+
 -- Slug change: the old link /books/excel-in-a-weekend now redirects to the new one
 update public.books set slug = 'excel-without-fear' where id = 'b0000000-0000-4000-8000-000000000009';
 
@@ -242,8 +276,21 @@ order by session_id, dedupe_key, at;
 -- pop-up with the newest books, all home sections, popular searches.
 -- Your WhatsApp number and payment numbers are not touched.
 update public.site_settings set
-  announcement = 'Weekend reads are 20% off until Sunday night',
+  announcement = 'Weekend reads are 20% off until Sunday night
+Every book has a free preview. Read before you buy',
   announcement_link = '/collections/weekend-reads',
+  announcement_code = 'WEEKEND20',
+  announcement_ends_at = date_trunc('week', now()) + interval '6 days 17 hours 59 minutes',
+  announcement_abroad = 'Reading from abroad? Prices are in US dollars. Pay with PayPal or Wise',
+  abroad_enabled = true,
+  usd_rate = 122,
+  usd_payment_methods = '[
+    {"label": "PayPal", "number": "pay@eboi.example", "note": "Friends and family"},
+    {"label": "Wise", "number": "eboi@wise.example", "note": "USD transfer"}
+  ]'::jsonb,
+  usd_payment_note = 'Send the total in US dollars, then share the receipt in the same WhatsApp chat. We send your PDF right after.',
+  whatsapp_abroad_template = '',
+  whatsapp_abroad_list_template = '',
   announcement_active = true,
   announcement_dismissible = true,
   announcement_bg = '#d42d2d',
@@ -259,7 +306,7 @@ update public.site_settings set
   popup_show_latest = true,
   popup_delay = 2,
   popup_autoclose = 15,
-  popup_frequency = 'session',
+  popup_frequency = 'visits',
   popup_version = (extract(epoch from now()) * 1000)::bigint,
   features = '{"sold_count": true, "category_rank": true, "bundle": true, "more_by_author": true, "tag_chips": true, "trending_searches": true, "card_quick_actions": true, "recent_sales_toast": true, "floating_whatsapp": true, "back_to_top": true}'::jsonb,
   trending_searches = array['ielts', 'freelancing', 'bangla novel', 'sql', 'recipes'],

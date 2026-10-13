@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { BUCKETS, MEDIA_FOLDERS } from "@/config/storage";
 import { sanitizeRichText } from "@/lib/rich-text";
+import { slugify } from "@/lib/slug";
+import { AUTO_COLLECTION_SLUGS } from "@/config/site";
 import { createSessionClient } from "@/lib/supabase/server";
 import { collectionInputSchema, type CollectionFormValues } from "@/features/collections/schema";
 import { requireAdmin } from "../auth";
@@ -39,6 +41,28 @@ export async function saveCollection(id: string, isNew: boolean, values: Collect
   }
   revalidatePath("/", "layout");
   return { ok: true, data: { id }, message: isNew ? "Collection created." : "Saved." };
+}
+
+/**
+ * Book form shortcut: a new, empty collection from just a name (the slug is
+ * made from it). Details can be filled in later under Collections.
+ */
+export async function quickCreateCollection(name: string): Promise<ActionResult<{ id: string; name: string }>> {
+  await requireAdmin();
+  const clean = name.trim().replace(/\s+/g, " ");
+  if (clean.length < 2 || clean.length > 80) return fail("Use 2 to 80 characters.");
+  const supabase = await createSessionClient();
+  const { data: same } = await supabase.from("collections").select("id, name").ilike("name", clean).maybeSingle();
+  if (same) return { ok: true, data: same, message: "That collection already exists. It is now ticked." };
+  const base = slugify(clean, "collection").slice(0, 70);
+  const { data: taken } = await supabase.from("collections").select("slug").like("slug", `${base}%`);
+  const used = new Set([...(taken ?? []).map((r) => r.slug), ...(AUTO_COLLECTION_SLUGS as string[])]);
+  let slug = base;
+  for (let n = 2; used.has(slug); n++) slug = `${base}-${n}`;
+  const { data, error } = await supabase.from("collections").insert({ name: clean, slug }).select("id, name").single();
+  if (error || !data) return fail(dbError(error ?? { message: "unknown" }));
+  revalidatePath("/", "layout");
+  return { ok: true, data, message: `Collection “${data.name}” created.` };
 }
 
 /** Replaces the collection's books with this exact ordered list. */

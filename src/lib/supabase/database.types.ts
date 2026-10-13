@@ -36,6 +36,8 @@ export type BookRow = Timestamps & {
   table_of_contents: string;
   price: number;
   old_price: number | null;
+  /** Dollar price for visitors outside Bangladesh (update-01). */
+  price_usd: number | null;
   offer_id: string | null;
   rating: number;
   rating_count: number;
@@ -243,6 +245,15 @@ export type SiteSettingsRow = {
   popup_version: number;
   features: Json;
   trending_searches: string[];
+  announcement_code: string;
+  announcement_ends_at: string | null;
+  announcement_abroad: string;
+  abroad_enabled: boolean;
+  usd_rate: number;
+  usd_payment_methods: Json;
+  usd_payment_note: string;
+  whatsapp_abroad_template: string;
+  whatsapp_abroad_list_template: string;
 };
 
 /** Makes columns with database defaults optional for inserts. */

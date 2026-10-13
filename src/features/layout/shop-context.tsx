@@ -19,6 +19,12 @@ const ShopContext = createContext<ClientSettings>({
   how_to_buy_steps: DEFAULT_SETTINGS.how_to_buy_steps,
   features: DEFAULT_SETTINGS.features,
   trending_searches: [],
+  abroad_enabled: false,
+  usd_rate: 0,
+  usd_payment_methods: [],
+  usd_payment_note: "",
+  whatsapp_abroad_template: DEFAULT_SETTINGS.whatsapp_abroad_template,
+  whatsapp_abroad_list_template: DEFAULT_SETTINGS.whatsapp_abroad_list_template,
 });
 
 export function ShopProvider({ settings, children }: { settings: ClientSettings; children: ReactNode }) {

@@ -122,3 +122,28 @@ export async function makePreviewThumbs(bookId: string, file: File): Promise<str
   }
   return paths;
 }
+
+/**
+ * Page 1 of a PDF as a JPEG cover file (2:3 friendly, at least the minimum
+ * cover width), for "Use the PDF's first page as the cover".
+ */
+export async function coverFromPdf(file: File): Promise<File> {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs?v=${pdfjs.version}`;
+  const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
+  try {
+    const doc = await task.promise;
+    const page = await doc.getPage(1);
+    const base = page.getViewport({ scale: 1 });
+    const viewport = page.getViewport({ scale: Math.max(COVER.minWidth, 900) / base.width });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
+    await page.render({ canvas, viewport }).promise;
+    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.88));
+    if (!blob) throw new Error("The first page could not be turned into an image.");
+    return new File([blob], `${file.name.replace(/\.pdf$/i, "")}-cover.jpg`, { type: "image/jpeg" });
+  } finally {
+    await task.destroy();
+  }
+}

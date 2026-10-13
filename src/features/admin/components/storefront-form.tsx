@@ -15,6 +15,11 @@ import { announcePreviewChange } from "./preview-panel";
 
 type Props = { settings: SiteSettings };
 
+/** Bangladesh has no daylight saving: +06:00 all year. */
+const BD_OFFSET = 6 * 60 * 60 * 1000;
+const toBdInput = (iso: string | null) => (iso ? new Date(Date.parse(iso) + BD_OFFSET).toISOString().slice(0, 16) : "");
+const fromBdInput = (v: string) => (v ? new Date(`${v}:00+06:00`).toISOString() : null);
+
 /** Announcement bar, pop-up, slider speed, feature switches and popular searches. */
 export function StorefrontForm({ settings }: Props) {
   const router = useRouter();
@@ -26,6 +31,9 @@ export function StorefrontForm({ settings }: Props) {
     announcement_bg: settings.announcement_bg,
     announcement_fg: settings.announcement_fg,
     announcement_image: settings.announcement_image,
+    announcement_abroad: settings.announcement_abroad,
+    announcement_code: settings.announcement_code,
+    announcement_ends: toBdInput(settings.announcement_ends_at),
     hero_interval: settings.hero_interval,
     popup_enabled: settings.popup_enabled,
     popup_title: settings.popup_title,
@@ -70,9 +78,10 @@ export function StorefrontForm({ settings }: Props) {
       onSubmit={(e) => {
         e.preventDefault();
         start(async () => {
-          const { trending, ...rest } = v;
+          const { trending, announcement_ends, ...rest } = v;
           const res = await saveStorefront({
             ...rest,
+            announcement_ends_at: fromBdInput(announcement_ends),
             trending_searches: trending
               .split(",")
               .map((t) => t.trim())
@@ -90,19 +99,42 @@ export function StorefrontForm({ settings }: Props) {
     >
       {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
 
-      <AdminCard title="Announcement bar" description="The thin notice at the very top of every page. Red by default.">
+      <AdminCard title="Announcement bar" description="The thin notice at the very top of every page. It slides down after the page loads and a soft shine passes over it. Red by default.">
         <div className="mb-4 overflow-hidden rounded-md border border-line">
           <div className="flex min-h-9 items-center justify-center gap-2 px-10 py-1.5 text-center text-sm" style={{ background: v.announcement_bg, color: v.announcement_fg }}>
             {annImage && (
               // eslint-disable-next-line @next/next/no-img-element -- live preview of the admin's image or GIF
               <img src={annImage} alt="" className={v.announcement ? "h-6 w-auto" : "max-h-14 w-auto"} />
             )}
-            <span className="font-medium">{v.announcement || (annImage ? "" : "Your announcement text")}</span>
+            <span className="font-medium">{v.announcement.split("\n")[0] || (annImage ? "" : "Your announcement text")}</span>
+            {v.announcement_code && <span className="rounded-sm border border-dashed border-current px-2 py-0.5 font-semibold">{v.announcement_code}</span>}
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Text" htmlFor="sf-ann" error={err("announcement")} className="sm:col-span-2">
-            <input id="sf-ann" className="input" maxLength={160} value={v.announcement} onChange={(e) => set("announcement", e.target.value)} />
+          <Field label="Text" htmlFor="sf-ann" hint="One message per line. Several lines take turns every 5 seconds." error={err("announcement")} className="sm:col-span-2">
+            <textarea id="sf-ann" rows={2} className="textarea min-h-16" maxLength={400} value={v.announcement} onChange={(e) => set("announcement", e.target.value)} />
+          </Field>
+          <Field
+            label="Text for visitors outside Bangladesh (optional)"
+            htmlFor="sf-ann-abroad"
+            hint="Shown instead when dollar prices are on in Settings. Empty = same text for everyone."
+            error={err("announcement_abroad")}
+            className="sm:col-span-2"
+          >
+            <textarea id="sf-ann-abroad" rows={2} className="textarea min-h-16" maxLength={400} value={v.announcement_abroad} onChange={(e) => set("announcement_abroad", e.target.value)} />
+          </Field>
+          <Field label="Coupon code (optional)" htmlFor="sf-ann-code" hint="Visitors tap it to copy, e.g. EBOI20" error={err("announcement_code")}>
+            <input id="sf-ann-code" className="input" maxLength={30} value={v.announcement_code} onChange={(e) => set("announcement_code", e.target.value.toUpperCase())} />
+          </Field>
+          <Field label="Ends at (optional, Bangladesh time)" htmlFor="sf-ann-ends" hint="Shows a live countdown. The bar hides itself when the time is up." error={err("announcement_ends_at")}>
+            <div className="flex gap-2">
+              <input id="sf-ann-ends" type="datetime-local" className="input" value={v.announcement_ends} onChange={(e) => set("announcement_ends", e.target.value)} />
+              {v.announcement_ends && (
+                <button type="button" className="btn btn-secondary shrink-0" onClick={() => set("announcement_ends", "")}>
+                  Clear
+                </button>
+              )}
+            </div>
           </Field>
           <Field label="Link (optional)" htmlFor="sf-ann-link" hint="/shop?deals=1 or https://…" error={err("announcement_link")}>
             <input id="sf-ann-link" className="input" value={v.announcement_link} onChange={(e) => set("announcement_link", e.target.value)} />
@@ -128,7 +160,7 @@ export function StorefrontForm({ settings }: Props) {
         </div>
       </AdminCard>
 
-      <AdminCard title="Pop-up" description="Shown once after a visitor arrives: an offer, news or your latest books. It can close itself after a few seconds.">
+      <AdminCard title="Pop-up" description="A small card shown after a visitor arrives: an offer, news or your latest books. By default it shows on a visitor's first visit, then again every 5th visit.">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Toggle id="sf-pop-on" label="Show the pop-up" checked={v.popup_enabled} onChange={(c) => set("popup_enabled", c)} />

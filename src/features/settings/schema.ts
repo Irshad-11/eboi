@@ -9,6 +9,8 @@ export const TEMPLATE_TOKENS = {
   list: "[Book List]",
   total: "[Total]",
   responseTime: "[Response time]",
+  /** Visitor's country, e.g. "United States". Filled for visitors outside Bangladesh. */
+  country: "[Country]",
 } as const;
 
 /** A link is either a path on this site ("/shop") or a full https URL. */
@@ -44,6 +46,13 @@ export const paymentMethodSchema = z.object({
   note: z.string().trim().max(60),
 });
 
+/** Dollar payments: PayPal, Wise, card link… The "number" can be an email, account or link. */
+export const usdPaymentMethodSchema = z.object({
+  label: z.string().trim().min(1, "Name the method").max(30),
+  number: z.string().trim().max(120),
+  note: z.string().trim().max(80),
+});
+
 export const HOME_SECTION_TYPES = {
   hero: "Banner carousel",
   trust: "Why buy here (4 promises)",
@@ -55,7 +64,7 @@ export const HOME_SECTION_TYPES = {
   collections: "Collection rows",
   collection_tiles: "Collection tiles",
   recent: "Recently viewed",
-  stats: "Shop in numbers (sold, readers, rating)",
+  stats: "Shop in numbers (sold, rating, books)",
   testimonials: "What readers say (reviews)",
   journey: "How to order steps",
   faq: "FAQ",
@@ -99,6 +108,20 @@ export const generalSettingsSchema = z.object({
   delivery_note: z.string().trim().max(120),
   payment_methods: z.array(paymentMethodSchema).max(6),
   how_to_buy_steps: z.array(stepSchema).min(1, "Keep at least one step").max(8),
+  abroad_enabled: z.boolean(),
+  usd_rate: z.coerce.number().min(0).max(1000),
+  usd_payment_methods: z.array(usdPaymentMethodSchema).max(6),
+  usd_payment_note: z.string().trim().max(600),
+  whatsapp_abroad_template: z
+    .string()
+    .trim()
+    .max(1000)
+    .refine((v) => v === "" || v.includes(TEMPLATE_TOKENS.title), `Must include ${TEMPLATE_TOKENS.title} (or leave empty)`),
+  whatsapp_abroad_list_template: z
+    .string()
+    .trim()
+    .max(1000)
+    .refine((v) => v === "" || v.includes(TEMPLATE_TOKENS.list), `Must include ${TEMPLATE_TOKENS.list} (or leave empty)`),
 });
 
 /**
@@ -126,10 +149,23 @@ const hex = z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, "Use a colour like #d42
 /** An image setting: an uploaded file path or a full https link (GIF allowed). */
 const imageRef = z.string().trim().max(1000).nullable();
 
-export const POPUP_FREQUENCIES = { session: "Once per visit", day: "Once a day", always: "Every page load" } as const;
+export const POPUP_FREQUENCIES = { visits: "First visit, then every 5th visit", session: "Once per visit", day: "Once a day" } as const;
+export type PopupFrequency = keyof typeof POPUP_FREQUENCIES;
 
 export const storefrontSchema = z.object({
-  announcement: z.string().trim().max(160),
+  /** One message per line; several lines take turns. */
+  announcement: z.string().trim().max(400),
+  /** Shown instead to visitors outside Bangladesh, when set. */
+  announcement_abroad: z.string().trim().max(400),
+  announcement_code: z
+    .string()
+    .trim()
+    .max(30)
+    .refine((v) => !/\s/.test(v), "One word, no spaces"),
+  announcement_ends_at: z
+    .string()
+    .nullable()
+    .refine((v) => v === null || !Number.isNaN(Date.parse(v)), "Pick a date and time"),
   announcement_link: linkUrl,
   announcement_active: z.boolean(),
   announcement_dismissible: z.boolean(),
@@ -146,7 +182,7 @@ export const storefrontSchema = z.object({
   popup_show_latest: z.boolean(),
   popup_delay: z.coerce.number().int().min(0).max(60),
   popup_autoclose: z.coerce.number().int().min(0).max(120),
-  popup_frequency: z.enum(Object.keys(POPUP_FREQUENCIES) as [keyof typeof POPUP_FREQUENCIES, ...(keyof typeof POPUP_FREQUENCIES)[]]),
+  popup_frequency: z.enum(Object.keys(POPUP_FREQUENCIES) as [PopupFrequency, ...PopupFrequency[]]),
   features: z.record(z.string(), z.boolean()),
   trending_searches: z.array(z.string().trim().min(1).max(40)).max(10),
 });
@@ -186,6 +222,7 @@ export type Step = z.infer<typeof stepSchema>;
 export type NavLink = z.infer<typeof linkSchema>;
 export type FooterColumn = z.infer<typeof footerColumnSchema>;
 export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
+export type UsdPaymentMethod = z.infer<typeof usdPaymentMethodSchema>;
 export type HomeSection = z.infer<typeof homeSectionSchema>;
 
 export type StorefrontSettings = Omit<z.infer<typeof storefrontSchema>, "features"> & {
