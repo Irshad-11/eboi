@@ -17,7 +17,7 @@ const SAMPLE: MessageBook = {
   title: "Sample Book Title",
   book_code: "EB-0001",
   slug: "sample-book-title",
-  pricing: { base: 250, final: 200, was: 250, offer: { id: "x", title: "Sample offer", banner_text: "", end_at: null, show_countdown: false, discount_type: "percent", value: 20 }, savePercent: 20, usd: { final: 3.2, was: 4 } },
+  pricing: { base: 250, final: 200, was: 250, offer: { id: "x", title: "Sample offer", banner_text: "", end_at: null, show_countdown: false, discount_type: "percent", value: 20 }, savePercent: 20, usd: { final: 3.2, was: 4 }, free: null },
 };
 
 export function SettingsForm({ settings }: { settings: SiteSettings }) {

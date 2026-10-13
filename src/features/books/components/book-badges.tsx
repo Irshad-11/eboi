@@ -14,7 +14,7 @@ export function DiscountBadge({ pricing, symbol, className }: { pricing: Pricing
   const local = discountLabel(pricing, symbol);
   const label = abroad && local?.startsWith(symbol) && pricing.was ? `${Math.round(((pricing.was - pricing.final) / pricing.was) * 100)}% off` : local;
   if (!label) return null;
-  return <span className={cn("badge badge-sale", className)}>{label}</span>;
+  return <span className={cn("badge", pricing.free ? "badge-free" : "badge-sale", className)}>{label}</span>;
 }
 
 /** Status badge set by the admin ("New", "Bestseller"). */

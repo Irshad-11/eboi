@@ -8,6 +8,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
   { type: "trust", enabled: true },
   { type: "categories", enabled: true },
   { type: "offers", enabled: true },
+  { type: "free", enabled: true },
   { type: "newest", enabled: true },
   { type: "best_selling", enabled: true },
   { type: "latest", enabled: true },

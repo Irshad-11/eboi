@@ -45,7 +45,7 @@ export async function renderBookOg(slug: string): Promise<ImageResponse> {
           {!bangla && book.author ? <div style={{ display: "flex", marginTop: 18, fontSize: 32, color: OG.text2 }}>by {book.author}</div> : null}
           <div style={{ display: "flex", flex: 1 }} />
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-            <span style={{ fontSize: 56, fontWeight: 700, color: off ? OG.sale : OG.text }}>{formatPrice(p.final, sym)}</span>
+            <span style={{ fontSize: 56, fontWeight: 700, color: off ? OG.sale : OG.text }}>{p.final <= 0 ? "Free" : formatPrice(p.final, sym)}</span>
             {p.was != null ? <span style={{ fontSize: 32, color: OG.text3, textDecoration: "line-through" }}>{formatPrice(p.was, sym)}</span> : null}
             {off ? <span style={{ display: "flex", background: OG.sale, color: OG.white, borderRadius: 8, padding: "6px 14px", fontSize: 26, fontWeight: 700 }}>{off}</span> : null}
           </div>

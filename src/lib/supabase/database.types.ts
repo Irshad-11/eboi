@@ -38,6 +38,9 @@ export type BookRow = Timestamps & {
   old_price: number | null;
   /** Dollar price for visitors outside Bangladesh (update-01). */
   price_usd: number | null;
+  /** Free of cost; with free_until set, only until then (update-01). */
+  is_free: boolean;
+  free_until: string | null;
   offer_id: string | null;
   rating: number;
   rating_count: number;

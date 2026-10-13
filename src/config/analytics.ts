@@ -46,6 +46,7 @@ export const SECTIONS = {
   newest: "home_newest",
   offers: "home_offers",
   bestSelling: "home_best_selling",
+  free: "home_free",
   latest: "home_latest",
   howItWorks: "home_how_it_works",
   about: "home_about",

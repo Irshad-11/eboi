@@ -10,7 +10,7 @@ export async function adminListBooks() {
   const supabase = await createSessionClient();
   const { data, error } = await supabase
     .from("books")
-    .select("id, book_code, title, slug, author, category, language, status, badge, price, old_price, total_sells, views, cover_path, preview_path, preview_page_count, is_demo, updated_at")
+    .select("id, book_code, title, slug, author, category, language, status, badge, price, old_price, is_free, free_until, total_sells, views, cover_path, preview_path, preview_page_count, is_demo, updated_at")
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data ?? [];
@@ -20,11 +20,12 @@ export async function adminGetBook(id: string) {
   const supabase = await createSessionClient();
   const { data } = await supabase.from("books").select("*").eq("id", id).maybeSingle();
   if (!data) return null;
-  const [{ data: members }, { data: reviews }] = await Promise.all([
+  const [{ data: members }, { data: reviews }, { count }] = await Promise.all([
     supabase.from("collection_books").select("collection_id").eq("book_id", id),
     supabase.from("book_reviews").select("author_name, rating, body, review_date, is_visible").eq("book_id", id).order("sort_order"),
+    supabase.from("sales_log").select("id", { count: "exact", head: true }).eq("book_id", id),
   ]);
-  return { book: data, memberOf: (members ?? []).map((m) => m.collection_id), reviews: reviews ?? [] };
+  return { book: data, memberOf: (members ?? []).map((m) => m.collection_id), reviews: reviews ?? [], loggedSales: count ?? 0 };
 }
 
 export async function adminFormOptions() {

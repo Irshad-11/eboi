@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Drawer } from "@/components/ui/drawer";
-import { CategoryIcon, IconBookOpen, IconChevronRight, IconClose, IconHeart, IconLayers, IconMenu, IconPercent, IconSearch, IconSpark, IconStar, IconTruck } from "@/components/icons";
+import { CategoryIcon, IconBookOpen, IconChevronRight, IconClose, IconHeart, IconLayers, IconMenu, IconPercent, IconSearch, IconSpark, IconStar, IconTag, IconTruck } from "@/components/icons";
 import { SearchBox } from "./search-box";
 import { QUICK_LINKS, type HeaderNav, type NavItem } from "./nav";
 import { useFooterLinks } from "./footer-links-context";
@@ -64,7 +64,7 @@ export function MobileHeaderTools({ nav, position }: { nav: HeaderNav; position:
       <Drawer open={menu} onClose={() => setMenu(false)} title="Menu">
         <nav aria-label="Menu" className="pb-6">
           <ul className="grid grid-cols-2 gap-2 p-3">
-            {QUICK_LINKS.filter((q) => q.key !== "offers" || nav.hasOffers).map((q) => (
+            {QUICK_LINKS.filter((q) => (q.key !== "offers" || nav.hasOffers) && (q.key !== "free" || nav.hasFree)).map((q) => (
               <li key={q.key}>
                 <Link
                   href={q.url}
@@ -72,10 +72,12 @@ export function MobileHeaderTools({ nav, position }: { nav: HeaderNav; position:
                   className={
                     q.key === "offers"
                       ? "flex min-h-12 items-center gap-2 rounded-md border border-sale/30 bg-sale-soft px-3 text-sm font-semibold text-sale"
-                      : "flex min-h-12 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold hover:border-brand hover:text-brand"
+                      : q.key === "free"
+                        ? "flex min-h-12 items-center gap-2 rounded-md border border-dashed border-[#12805c] bg-[#e7f5ef] px-3 text-sm font-semibold text-[#12805c]"
+                        : "flex min-h-12 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold hover:border-brand hover:text-brand"
                   }
                 >
-                  {q.key === "offers" ? <IconPercent size={18} /> : q.key === "all" ? <IconBookOpen size={18} className="text-brand" /> : q.key === "new" ? <IconSpark size={18} className="text-brand" /> : <IconStar size={18} className="text-star" />}
+                  {q.key === "offers" ? <IconPercent size={18} /> : q.key === "free" ? <IconTag size={18} /> : q.key === "all" ? <IconBookOpen size={18} className="text-brand" /> : q.key === "new" ? <IconSpark size={18} className="text-brand" /> : <IconStar size={18} className="text-star" />}
                   {q.label}
                 </Link>
               </li>

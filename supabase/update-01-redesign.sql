@@ -437,4 +437,16 @@ alter table public.site_settings add column if not exists announcement_abroad te
 -- Pop-up: new default is first visit, then every 5th visit.
 update public.site_settings set popup_frequency = 'visits' where popup_frequency = 'always';
 
+-- -----------------------------------------------------------------------------
+-- Free books: always free, or free until a date (then the price comes back)
+-- -----------------------------------------------------------------------------
+alter table public.books add column if not exists is_free boolean not null default false;
+alter table public.books add column if not exists free_until timestamptz;
+grant select (is_free, free_until) on public.books to anon;
+
+-- /collections/free is a computed page, so no collection may use that slug.
+alter table public.collections drop constraint if exists collections_reserved_slug;
+alter table public.collections add constraint collections_reserved_slug
+  check (slug not in ('best-selling', 'latest', 'most-viewed', 'free')) not valid;
+
 -- Done.

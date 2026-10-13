@@ -65,6 +65,11 @@ export function autoCollectionBooks(slug: AutoCollectionSlug, books: BookCard[])
       return list.filter((b) => b.views > 0).sort((a, b) => b.views - a.views);
     case "latest":
       return list.sort((a, b) => releaseTime(b) - releaseTime(a));
+    case "free":
+      // Free right now: always-free books first, then the ones whose free time ends soonest.
+      return list
+        .filter((b) => b.pricing.free)
+        .sort((a, b) => (a.pricing.free?.until ? Date.parse(a.pricing.free.until) : Infinity) - (b.pricing.free?.until ? Date.parse(b.pricing.free.until) : Infinity));
   }
 }
 

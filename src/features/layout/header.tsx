@@ -55,7 +55,7 @@ export function Header({ nav, whatsappNumber, siteName, quickLinks = [] }: Props
  */
 function DesktopNav({ nav, quickLinks }: { nav: HeaderNav; quickLinks: FooterColumn[] }) {
   const columns = quickLinks.filter((c) => c.links.length > 0);
-  const quick = QUICK_LINKS.filter((q) => q.key !== "offers" || nav.hasOffers);
+  const quick = QUICK_LINKS.filter((q) => (q.key !== "offers" || nav.hasOffers) && (q.key !== "free" || nav.hasFree));
   return (
     <nav aria-label="Shop" className="relative z-30 hidden border-b border-line bg-white lg:block">
       <ul className="container-x flex h-12 items-center gap-1">
@@ -91,7 +91,9 @@ function DesktopNav({ nav, quickLinks }: { nav: HeaderNav; quickLinks: FooterCol
               className={
                 q.key === "offers"
                   ? "inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-semibold whitespace-nowrap text-sale hover:bg-sale-soft"
-                  : "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium whitespace-nowrap text-text hover:bg-muted hover:text-brand"
+                  : q.key === "free"
+                    ? "inline-flex h-9 items-center rounded-md border border-dashed border-[#12805c] px-3 text-sm font-semibold whitespace-nowrap text-[#12805c] hover:bg-[#e7f5ef]"
+                    : "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium whitespace-nowrap text-text hover:bg-muted hover:text-brand"
               }
             >
               {q.key === "offers" && <IconPercent size={16} />}

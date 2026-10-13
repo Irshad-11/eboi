@@ -21,6 +21,7 @@ export const AUTO_COLLECTIONS = {
   "best-selling": { name: "Best selling", description: "" },
   latest: { name: "New arrivals", description: "" },
   "most-viewed": { name: "Most viewed", description: "" },
+  free: { name: "Free books", description: "" },
 } as const;
 
 export type AutoCollectionSlug = keyof typeof AUTO_COLLECTIONS;

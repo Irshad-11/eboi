@@ -21,7 +21,7 @@ export function SaleForm({ books }: { books: Book[] }) {
   return (
     <form
       ref={formRef}
-      className="grid gap-4 md:grid-cols-[minmax(0,2fr)_8rem_10rem_minmax(0,1fr)_auto] md:items-end"
+      className="grid gap-4 md:grid-cols-[minmax(0,2fr)_6rem_7rem_10rem_minmax(0,1fr)_auto] md:items-end"
       onSubmit={(e) => {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
@@ -29,6 +29,7 @@ export function SaleForm({ books }: { books: Book[] }) {
           const res = await logSale({
             bookId: String(fd.get("bookId") ?? ""),
             price,
+            copies: String(fd.get("copies") ?? "1"),
             soldOn: String(fd.get("soldOn") ?? ""),
             note: String(fd.get("note") ?? ""),
           });
@@ -66,8 +67,11 @@ export function SaleForm({ books }: { books: Book[] }) {
           ))}
         </select>
       </Field>
-      <Field label="Price paid" htmlFor="s-price" error={errors.price}>
+      <Field label="Price each" htmlFor="s-price" hint="0 for a free book" error={errors.price}>
         <input id="s-price" type="number" min={0} inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="input tnum" />
+      </Field>
+      <Field label="Copies" htmlFor="s-copies" error={errors.copies}>
+        <input id="s-copies" name="copies" type="number" min={1} max={100} defaultValue={1} inputMode="numeric" className="input tnum" />
       </Field>
       <Field label="Date" htmlFor="s-date" error={errors.soldOn}>
         <input id="s-date" name="soldOn" type="date" defaultValue={todayInDhaka()} className="input tnum" />
@@ -78,7 +82,7 @@ export function SaleForm({ books }: { books: Book[] }) {
       <button className="btn btn-primary" data-loading={pending} disabled={pending}>
         Log sale
       </button>
-      {notice && <Notice tone={notice.tone} className="md:col-span-5 md:order-first">{notice.text}</Notice>}
+      {notice && <Notice tone={notice.tone} className="md:col-span-6 md:order-first">{notice.text}</Notice>}
     </form>
   );
 }

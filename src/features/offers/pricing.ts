@@ -38,9 +38,25 @@ export type Pricing = {
    * Offers and old prices carry over by the same ratio as the taka price.
    */
   usd: { final: number; was: number | null } | null;
+  /** Set while the book costs nothing. `until` is when the normal price comes back (null = free with no end). */
+  free: { until: string | null } | null;
 };
 
-export type PriceableBook = { id: string; price: number; old_price: number | null; offer_id: string | null; price_usd?: number | null };
+export type PriceableBook = {
+  id: string;
+  price: number;
+  old_price: number | null;
+  offer_id: string | null;
+  price_usd?: number | null;
+  is_free?: boolean | null;
+  free_until?: string | null;
+};
+
+/** Free right now: switched to free (with no end, or an end still ahead), or a price of 0. */
+export function isFreeNow(book: Pick<PriceableBook, "is_free" | "free_until">, now = Date.now()): boolean {
+  if (!book.is_free) return false;
+  return !book.free_until || Date.parse(book.free_until) > now;
+}
 
 /** Same discount ratio as the taka price, rounded to cents. */
 function usdPrice(book: PriceableBook, base: number, final: number, was: number | null): Pricing["usd"] {
@@ -83,6 +99,20 @@ export function priceBook(
   bookCollections: ReadonlySet<string> = new Set(),
 ): Pricing {
   const base = Number(book.price);
+
+  // Free beats every offer. The list price shows struck through, so it reads as a gift.
+  if (isFreeNow(book) || base <= 0) {
+    const usdBase = book.price_usd != null && Number(book.price_usd) > 0 ? Number(book.price_usd) : null;
+    return {
+      base,
+      final: 0,
+      was: base > 0 ? base : null,
+      offer: null,
+      savePercent: base > 0 ? 100 : null,
+      usd: usdBase ? { final: 0, was: usdBase } : null,
+      free: { until: base > 0 && book.free_until ? book.free_until : null },
+    };
+  }
   let best: { offer: ActiveOffer; final: number } | null = null;
 
   for (const offer of offers) {
@@ -100,6 +130,7 @@ export function priceBook(
       offer: { id, title, banner_text, end_at, show_countdown, discount_type, value: Number(value) },
       savePercent: base > 0 ? Math.round(((base - best.final) / base) * 100) : null,
       usd: usdPrice(book, base, best.final, base),
+      free: best.final <= 0 ? { until: best.offer.end_at } : null,
     };
   }
 
@@ -112,6 +143,7 @@ export function priceBook(
     offer: null,
     savePercent: was ? Math.round(((was - base) / was) * 100) : null,
     usd: usdPrice(book, base, base, was),
+    free: null,
   };
 }
 
@@ -125,6 +157,7 @@ export function describeDiscount(type: DiscountType, value: number, symbol: stri
  * for fixed ones, and a rounded percent for a manual old price.
  */
 export function discountLabel(p: Pricing, symbol: string): string | null {
+  if (p.free) return "Free";
   if (p.was == null || p.was <= p.final) return null;
   if (p.offer?.discount_type === "fixed") return `${symbol}${Math.round(p.was - p.final)} off`;
   if (p.offer?.discount_type === "percent") return `${Number(p.offer.value)}% off`;

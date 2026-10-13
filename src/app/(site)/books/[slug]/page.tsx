@@ -83,7 +83,8 @@ export default async function BookPage({ params }: Props) {
   const catSlug = catMap.get(book.category);
   const catPath = catSlug ? `/category/${catSlug}` : "/shop";
   const offer = book.pricing.offer;
-  const save = book.pricing.was != null && book.pricing.was > book.pricing.final;
+  const free = book.pricing.free;
+  const save = !free && book.pricing.was != null && book.pricing.was > book.pricing.final;
   const hasPreview = Boolean(book.preview_path);
   const thumbs = book.preview_thumbs.map((t) => mediaUrl(t)!).filter(Boolean);
 
@@ -243,14 +244,26 @@ export default async function BookPage({ params }: Props) {
             <div className="mt-4 rounded-md bg-muted px-4 py-3">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <PriceTag pricing={book.pricing} symbol={symbol} size="lg" />
-                <DiscountBadge pricing={book.pricing} symbol={symbol} />
+                {!free && <DiscountBadge pricing={book.pricing} symbol={symbol} />}
               </div>
               {save && (
                 <p className="mt-1 text-sm font-medium text-sale">
                   You save <PriceText pricings={[book.pricing]} kind="save" />
                 </p>
               )}
-              {offer?.end_at && offer.show_countdown && (
+              {free && (
+                <p className="mt-1 inline-flex flex-wrap items-center gap-1 text-sm font-medium text-[#12805c]">
+                  <IconClock size={15} />
+                  {free.until ? (
+                    <>
+                      Free for a limited time: <Countdown endAt={free.until} className="font-semibold" />
+                    </>
+                  ) : (
+                    "Free PDF. Order on WhatsApp and we send it at no cost."
+                  )}
+                </p>
+              )}
+              {!free && offer?.end_at && offer.show_countdown && (
                 <p className="mt-1 inline-flex items-center gap-1 text-sm text-text-2">
                   <IconClock size={15} className="text-sale" />
                   {offer.title}: <Countdown endAt={offer.end_at} className="font-medium text-sale" />
@@ -291,7 +304,7 @@ export default async function BookPage({ params }: Props) {
             )}
 
             <div id="buy-box" className="mt-5 flex flex-wrap gap-2">
-              <BuyButton book={msgBook} section={SECTIONS.detailBuyBox} size="lg" className="w-full sm:w-auto sm:flex-1" />
+              <BuyButton book={msgBook} section={SECTIONS.detailBuyBox} size="lg" label={free ? "Get it free on WhatsApp" : undefined} className="w-full sm:w-auto sm:flex-1" />
               {hasPreview && <PreviewButton book={readerBook} className="btn-lg flex-1 sm:flex-none" />}
               <ListButton bookId={book.id} section={SECTIONS.detailBuyBox} className="btn-lg" />
               <ShareButton title={book.title} url={absoluteUrl(path)} bookId={book.id} />

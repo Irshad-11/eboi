@@ -131,6 +131,19 @@
       "maximum": 10000,
       "description": "Optional dollar price for visitors outside Bangladesh. Leave out or null to show them the Taka price."
     },
+    "is_free": {
+      "type": "boolean",
+      "default": false,
+      "description": "Free of cost. The price stays saved and shows struck through."
+    },
+    "free_until": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "Optional. With is_free, the book is free only until this time (e.g. 2026-10-20T23:59:00+06:00), then the normal price comes back."
+    },
     "offer_id": {
       "type": [
         "string",

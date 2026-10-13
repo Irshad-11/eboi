@@ -34,6 +34,7 @@ const saveSchema = z.object({
   thumbs: z.array(z.string().max(200)).max(8).nullish(),
   ogImage: z.string().max(1000).nullable().optional(),
   reviews: z.array(reviewSchema).max(50).nullish(),
+  soldBase: z.number().int().min(0).optional(),
 });
 
 export type ReviewInput = z.input<typeof reviewSchema>;
@@ -51,6 +52,11 @@ export type SaveBookInput = {
   ogImage?: string | null;
   /** undefined/null = leave reviews as they are. */
   reviews?: ReviewInput[] | null;
+  /**
+   * The "Sold" number the form loaded. When given, the form's change is
+   * added to the current count, so sales logged meanwhile are not lost.
+   */
+  soldBase?: number;
 };
 
 /**
@@ -63,7 +69,7 @@ export async function saveBook(input: SaveBookInput): Promise<ActionResult<{ id:
   await requireAdmin();
   const parsed = saveSchema.safeParse(input);
   if (!parsed.success) return fail("The form data was not valid.", zodFieldErrors(parsed.error));
-  const { id, isNew, bookCode, collectionIds, cover, preview, thumbs, ogImage, reviews } = parsed.data;
+  const { id, isNew, bookCode, collectionIds, cover, preview, thumbs, ogImage, reviews, soldBase } = parsed.data;
 
   const newCover = cover && "path" in cover ? cover.path : null;
   const newPreview = preview && "path" in preview ? preview.path : null;
@@ -127,7 +133,7 @@ export async function saveBook(input: SaveBookInput): Promise<ActionResult<{ id:
   }
 
   const supabase = await createSessionClient();
-  const { data: existing } = await supabase.from("books").select("cover_path, preview_path, preview_thumbs, og_image_path").eq("id", id).maybeSingle();
+  const { data: existing } = await supabase.from("books").select("cover_path, preview_path, preview_thumbs, og_image_path, total_sells").eq("id", id).maybeSingle();
   if (!isNew && !existing) {
     await cleanupNew();
     return fail("This book no longer exists.");
@@ -150,6 +156,7 @@ export async function saveBook(input: SaveBookInput): Promise<ActionResult<{ id:
   if (ogImage !== undefined) files.og_image_path = ogImage;
 
   const row = { ...values.data, description: sanitizeRichText(values.data.description), ...files };
+  if (existing && soldBase !== undefined) row.total_sells = Math.max(0, existing.total_sells + (values.data.total_sells - soldBase));
   const { data: saved, error } = existing
     ? await supabase.from("books").update(row).eq("id", id).select("id, slug").single()
     : await supabase

@@ -66,6 +66,12 @@ export default async function HomePage() {
         return <CategoryShortcuts key="categories" categories={categories} />;
       case "offers":
         return <OffersSection key="offers" offers={offers} books={books} collections={collections} symbol={symbol} />;
+      case "free": {
+        const free = autoCollectionBooks("free", books);
+        return free.length ? (
+          <ProductRow key="free" id="free-title" title="Free books" books={free.slice(0, HOME.rowCount)} symbol={symbol} section={SECTIONS.free} href="/collections/free" />
+        ) : null;
+      }
       case "newest":
         return newestCard ? (
           <TrackSection key="newest" name={SECTIONS.newest} bookId={newestCard.id} className="container-x py-4 md:py-5" aria-labelledby="newest-title">

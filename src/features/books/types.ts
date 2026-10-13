@@ -6,7 +6,7 @@ import type { Pricing } from "@/features/offers/pricing";
  * columns, which keeps `internal_file_note` private at the database level.
  */
 export const CARD_COLUMNS =
-  "id, book_code, title, subtitle, slug, author, category, tags, language, page_count, format, price, old_price, price_usd, offer_id, rating, rating_count, total_sells, views, release_date, is_featured, badge, cover_path, cover_alt, preview_path, preview_page_count, is_demo, created_at, updated_at, noindex" as const;
+  "id, book_code, title, subtitle, slug, author, category, tags, language, page_count, format, price, old_price, price_usd, is_free, free_until, offer_id, rating, rating_count, total_sells, views, release_date, is_featured, badge, cover_path, cover_alt, preview_path, preview_page_count, is_demo, created_at, updated_at, noindex" as const;
 
 export const DETAIL_COLUMNS =
   `${CARD_COLUMNS}, file_size, description, highlights, table_of_contents, seo_title, seo_description, focus_keyword, seo_keywords, canonical_url, og_image_path, preview_thumbs, status` as const;
@@ -26,6 +26,8 @@ type CardKeys =
   | "price"
   | "old_price"
   | "price_usd"
+  | "is_free"
+  | "free_until"
   | "offer_id"
   | "rating"
   | "rating_count"

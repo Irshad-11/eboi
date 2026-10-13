@@ -25,6 +25,8 @@
   "price": 220,
   "old_price": null,
   "price_usd": 2.49,
+  "is_free": false,
+  "free_until": null,
   "offer_id": null,
   "rating": 0,
   "rating_count": 0,

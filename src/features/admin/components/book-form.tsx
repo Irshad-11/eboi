@@ -9,6 +9,7 @@ import { MEDIA_FOLDERS } from "@/config/storage";
 import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format";
+import { fromDhakaInput, toDhakaInput } from "@/lib/datetime";
 import type { BookRow } from "@/lib/supabase/database.types";
 import { coverUrl } from "@/features/books/cover";
 import { isValidImageUrl } from "@/lib/media";
@@ -33,6 +34,8 @@ type Props = {
   languages: string[];
   reviews: ReviewInput[];
   titleTemplate: string;
+  /** Rows in the sales log for this book. */
+  loggedSales?: number;
 };
 
 type FileState<C> = { file: File; check: C } | null;
@@ -48,6 +51,8 @@ type State = {
   price: string;
   old_price: string;
   price_usd: string;
+  is_free: boolean;
+  free_until: string;
   offer_id: string;
   description: string;
   highlights: string;
@@ -80,6 +85,8 @@ function initial(b: BookRow | null, memberOf: string[]): State {
     price: b ? String(b.price) : "",
     old_price: b?.old_price != null ? String(b.old_price) : "",
     price_usd: b?.price_usd != null ? String(b.price_usd) : "",
+    is_free: b?.is_free ?? false,
+    free_until: toDhakaInput(b?.free_until),
     offer_id: b?.offer_id ?? "",
     description: b?.description ?? "",
     highlights: b?.highlights.join("\n") ?? "",
@@ -124,7 +131,7 @@ function clip(text: string, max: number): string {
 }
 
 /** Create/edit every book field. Files upload to private storage, then saveBook verifies them. */
-export function BookForm({ book, collections, memberOf, offers, categories, languages, reviews: initialReviews, titleTemplate }: Props) {
+export function BookForm({ book, collections, memberOf, offers, categories, languages, reviews: initialReviews, titleTemplate, loggedSales }: Props) {
   const router = useRouter();
   const [id] = useState(() => book?.id ?? crypto.randomUUID());
   const [s, setS] = useState<State>(() => initial(book, memberOf));
@@ -176,6 +183,8 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
       price: s.price,
       old_price: s.old_price || null,
       price_usd: s.price_usd || null,
+      is_free: s.is_free,
+      free_until: s.is_free ? fromDhakaInput(s.free_until) : null,
       offer_id: s.offer_id || null,
       rating: s.rating || 0,
       rating_count: s.rating_count || 0,
@@ -233,6 +242,8 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
         id,
         isNew: !book,
         values: v,
+        // "Sold" is saved as a change from what was loaded, so sales logged meanwhile are kept.
+        soldBase: book ? book.total_sells : undefined,
         collectionIds: s.collections,
         cover: uploaded.cover ? { path: uploaded.cover } : linkChanged ? { path: coverLink.trim() } : removeCover ? { remove: true } : null,
         preview: uploaded.preview ? { path: uploaded.preview } : removePreview ? { remove: true } : null,
@@ -517,6 +528,27 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
               <Field label="Dollar price (US$)" htmlFor="b-price_usd" hint="For visitors outside Bangladesh, e.g. 2.99. Offers apply to it too." error={err("price_usd")}>
                 {input("price_usd", { type: "number", min: 0, step: 0.01, inputMode: "decimal", placeholder: "Optional" })}
               </Field>
+              <div className="rounded-md border border-dashed border-[#12805c] bg-[#f3faf6] p-3">
+                <Toggle
+                  id="b-free"
+                  label="Free of cost"
+                  hint="Shows “Free” everywhere and adds the book to Free books. Switch off to sell it at the price above again."
+                  checked={s.is_free}
+                  onChange={(c) => set("is_free", c)}
+                />
+                {s.is_free && (
+                  <Field label="Free until (optional, Bangladesh time)" htmlFor="b-free_until" hint="Empty = free until you switch it off. After this time the normal price comes back by itself." error={err("free_until")} className="mt-3">
+                    <div className="flex gap-2">
+                      <input id="b-free_until" type="datetime-local" className="input min-w-0 flex-1" value={s.free_until} onChange={(e) => set("free_until", e.target.value)} />
+                      {s.free_until && (
+                        <button type="button" className="btn btn-secondary shrink-0" onClick={() => set("free_until", "")}>
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  </Field>
+                )}
+              </div>
               <Field label="Linked offer" htmlFor="b-offer_id" error={err("offer_id")}>
                 <select id="b-offer_id" className="select" value={s.offer_id} onChange={(e) => set("offer_id", e.target.value)}>
                   <option value="">None</option>
@@ -708,8 +740,46 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
               <Field label="Ratings" htmlFor="b-rating_count" error={err("rating_count")}>
                 {input("rating_count", { type: "number", min: 0 })}
               </Field>
-              <Field label="Sold" htmlFor="b-total_sells" error={err("total_sells")}>
-                {input("total_sells", { type: "number", min: 0 })}
+              <Field
+                label="Sold"
+                htmlFor="b-total_sells"
+                error={err("total_sells")}
+                className="col-span-2"
+                hint={
+                  <>
+                    Every sale you log in Sales log adds 1 by itself.
+                    {loggedSales != null && ` Logged sales: ${loggedSales}.`}
+                  </>
+                }
+              >
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    id="b-total_sells"
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    className="input w-28"
+                    value={s.total_sells}
+                    onChange={(e) => set("total_sells", e.target.value)}
+                    aria-invalid={Boolean(err("total_sells")) || undefined}
+                  />
+                  {[1, 5, 10].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      className="btn btn-secondary btn-sm h-11"
+                      onClick={() => set("total_sells", String(Math.max(0, Number(s.total_sells || 0)) + n))}
+                      aria-label={`Add ${n} sold`}
+                    >
+                      +{n}
+                    </button>
+                  ))}
+                  {loggedSales != null && loggedSales !== Number(s.total_sells || 0) && (
+                    <button type="button" className="btn btn-ghost btn-sm h-11" onClick={() => set("total_sells", String(loggedSales))}>
+                      Match sales log
+                    </button>
+                  )}
+                </div>
               </Field>
               <Field label="Views" htmlFor="b-views" error={err("views")}>
                 {input("views", { type: "number", min: 0 })}

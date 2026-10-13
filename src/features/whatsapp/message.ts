@@ -18,7 +18,7 @@ const HOME: MessageRegion = { abroad: false, rate: 0, country: "" };
 export function priceLine(p: Pricing, symbol: string, region: MessageRegion = HOME): string {
   const l = localPrice(p, region.abroad, region.rate);
   const fmt = (n: number) => (l.usd ? formatUsd(n) : formatPrice(n, symbol));
-  const now = fmt(l.final);
+  const now = l.final <= 0 ? "Free" : fmt(l.final);
   if (l.was == null) return now;
   const why = p.offer ? `, ${p.offer.title} offer` : "";
   return `${now} (was ${fmt(l.was)}${why})`;
@@ -52,7 +52,7 @@ export function buildListMessage(template: string, books: MessageBook[], symbol:
   const codes = books.map((b) => b.book_code).join(",");
   return fill(template, {
     [TEMPLATE_TOKENS.list]: lines.join("\n"),
-    [TEMPLATE_TOKENS.total]: total.usd ? formatUsd(total.final) : formatPrice(total.final, symbol),
+    [TEMPLATE_TOKENS.total]: total.final <= 0 ? "Free" : total.usd ? formatUsd(total.final) : formatPrice(total.final, symbol),
     // A shareable list link: the shop owner can open it and see the covers.
     [TEMPLATE_TOKENS.url]: `${siteUrl}/my-list?books=${codes}`,
     [TEMPLATE_TOKENS.country]: region.country,

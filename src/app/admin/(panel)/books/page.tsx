@@ -6,6 +6,7 @@ import { deleteBook } from "@/features/admin/actions/books";
 import { AdminPageHead } from "@/features/admin/components/admin-page-head";
 import { DeleteButton } from "@/features/admin/components/delete-button";
 import { IconChart, IconDownload, IconEdit, IconPlus, IconSearch } from "@/components/icons";
+import { isFreeNow } from "@/features/offers/pricing";
 
 export const metadata = { title: "Books" };
 
@@ -81,6 +82,7 @@ export default async function AdminBooksPage({ searchParams }: Props) {
                       <span>{b.book_code}</span>
                       <span className={`badge ${b.status === "published" ? "badge-ok" : "badge-soft"}`}>{b.status === "published" ? "Published" : "Draft"}</span>
                       {!b.preview_path && <span className="badge badge-warn">No preview</span>}
+                      {isFreeNow(b) && <span className="badge badge-free">{b.free_until ? `Free until ${formatDate(b.free_until)}` : "Free"}</span>}
                       {b.is_demo && <span className="badge badge-soft">Demo</span>}
                       <span className="md:hidden">{formatPrice(Number(b.price))}</span>
                     </p>

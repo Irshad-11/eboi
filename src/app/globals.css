@@ -378,6 +378,11 @@
     background: var(--color-warn-soft);
     color: var(--color-warn);
   }
+  /* Free books: green, so "Free" never reads as a red sale. */
+  .badge-free {
+    background: #12805c;
+    color: var(--color-white);
+  }
 
   /* Prices -------------------------------------------------------------- */
   .price-now {
@@ -387,6 +392,9 @@
   }
   .price-now[data-sale="true"] {
     color: var(--color-sale);
+  }
+  .price-now[data-free="true"] {
+    color: #12805c;
   }
   .price-was {
     color: var(--color-text-3);

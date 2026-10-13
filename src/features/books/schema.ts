@@ -44,6 +44,12 @@ export const bookInputSchema = z
     old_price: money.nullish().transform((v) => v ?? null),
     /** Dollar price for visitors outside Bangladesh. Empty = they see the taka price. */
     price_usd: z.coerce.number().min(0, "Cannot be negative").max(10000).nullish().transform((v) => (v ? Math.round(v * 100) / 100 : null)),
+    /** Free of cost. With free_until, only until then; the normal price comes back by itself. */
+    is_free: z.boolean().default(false),
+    free_until: z.iso
+      .datetime({ offset: true, message: "Pick a date and time" })
+      .nullish()
+      .transform((v) => v ?? null),
     offer_id: z.uuid().nullish().transform((v) => v ?? null),
     rating: z.coerce.number().min(0).max(5).default(0),
     rating_count: z.coerce.number().int().min(0).default(0),

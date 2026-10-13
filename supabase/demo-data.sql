@@ -23,6 +23,9 @@ alter table public.site_settings add column if not exists features jsonb not nul
 alter table public.site_settings add column if not exists trending_searches text[] not null default '{}';
 alter table public.books add column if not exists price_usd numeric(10, 2);
 grant select (price_usd) on public.books to anon;
+alter table public.books add column if not exists is_free boolean not null default false;
+alter table public.books add column if not exists free_until timestamptz;
+grant select (is_free, free_until) on public.books to anon;
 alter table public.site_settings add column if not exists abroad_enabled boolean not null default false;
 alter table public.site_settings add column if not exists usd_rate numeric(10, 2) not null default 0;
 alter table public.site_settings add column if not exists usd_payment_methods jsonb not null default '[]'::jsonb;
@@ -158,6 +161,10 @@ update public.books set cover_alt = title || ' by ' || author || ', book cover' 
 
 -- Dollar prices for visitors outside Bangladesh: 200 taka becomes 1.99 dollars.
 update public.books set price_usd = ceil(price / 100.0) - 0.01 where is_demo;
+
+-- Free books: one free with no end, one free for the next 3 days.
+update public.books set is_free = true, free_until = null where slug = 'chotoder-biggan-khata' and is_demo;
+update public.books set is_free = true, free_until = now() + interval '3 days' where slug = 'phone-photography-for-shops' and is_demo;
 
 -- Slug change: the old link /books/excel-in-a-weekend now redirects to the new one
 update public.books set slug = 'excel-without-fear' where id = 'b0000000-0000-4000-8000-000000000009';
@@ -315,6 +322,7 @@ Every book has a free preview. Read before you buy',
     {"type": "trust", "enabled": true},
     {"type": "categories", "enabled": true},
     {"type": "offers", "enabled": true},
+    {"type": "free", "enabled": true},
     {"type": "newest", "enabled": true},
     {"type": "best_selling", "enabled": true},
     {"type": "latest", "enabled": true},

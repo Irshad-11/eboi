@@ -117,7 +117,7 @@ export function ListWithSend({ books, removable = false, onClear }: { books: Boo
           )}
           <div className="flex justify-between border-t border-line pt-2 text-md font-semibold">
             <dt>Total</dt>
-            <dd className="tnum">{money.fmt(total, sum.usd)}</dd>
+            <dd className="tnum">{total <= 0 ? "Free" : money.fmt(total, sum.usd)}</dd>
           </div>
         </dl>
         <button

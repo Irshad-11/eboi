@@ -28,6 +28,8 @@ export function toBookJson(book: BookRow, collectionSlugs: string[], siteUrl: st
     price: Number(book.price),
     old_price: book.old_price == null ? null : Number(book.old_price),
     price_usd: book.price_usd == null ? null : Number(book.price_usd),
+    is_free: book.is_free,
+    free_until: book.free_until,
     offer_id: book.offer_id,
     rating: Number(book.rating),
     rating_count: book.rating_count,

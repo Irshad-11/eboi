@@ -28,10 +28,10 @@ export async function SiteChrome({ children }: { children: ReactNode }) {
   const [settings, categories, collections, offers] = await Promise.all([getSettings(), getCategories(), getCollections(), getLiveOffers()]);
   const f = settings.features;
   const [allBooks, recentSales] = await Promise.all([
-    settings.popup_enabled && settings.popup_show_latest ? getPublishedBooks() : Promise.resolve([]),
+    getPublishedBooks(),
     f.recent_sales_toast ? getRecentSales(8) : Promise.resolve([]),
   ]);
-  const latest = sortBooks(allBooks, "newest").slice(0, 3).map(toLite);
+  const latest = settings.popup_enabled && settings.popup_show_latest ? sortBooks(allBooks, "newest").slice(0, 3).map(toLite) : [];
   const catItems = categories.filter((c) => c.count > 0).map((c) => ({ label: c.name, url: `/category/${c.slug}`, icon: c.icon, count: c.count, pin: c.show_in_nav }));
   const colItems = collections.filter((c) => c.books.length > 0).map((c) => ({ label: c.name, url: `/collections/${c.slug}`, count: c.books.length, pin: c.show_in_nav }));
   const strip = (i: { pin: boolean } & NavItem): NavItem => ({ label: i.label, url: i.url, icon: i.icon, count: i.count });
@@ -41,6 +41,7 @@ export async function SiteChrome({ children }: { children: ReactNode }) {
     pinned: [...catItems, ...colItems].filter((i) => i.pin).map(strip),
     links: settings.header_links,
     hasOffers: offers.length > 0,
+    hasFree: allBooks.some((b) => b.pricing.free),
   };
   const announcementEnded = isPast(settings.announcement_ends_at);
   const footerCategories = categories.filter((c) => c.count > 0).map((c) => ({ label: c.name, url: `/category/${c.slug}` }));

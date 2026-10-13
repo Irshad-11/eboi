@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { publicEnv } from "@/lib/env";
 import { slugify } from "@/lib/slug";
+import { fromDhakaInput } from "@/lib/datetime";
 import { IconCheck, IconCopy, IconDownload, IconUpload } from "@/components/icons";
 import { bookJsonSchema } from "@/features/books/schema";
 import { BOOK_JSON_SCHEMA_URL } from "@/features/books/json";
@@ -25,6 +26,8 @@ type Form = {
   price: string;
   old_price: string;
   price_usd: string;
+  is_free: boolean;
+  free_until: string;
   page_count: string;
   file_size: string;
   release_date: string;
@@ -56,6 +59,8 @@ const EMPTY: Form = {
   price: "",
   old_price: "",
   price_usd: "",
+  is_free: false,
+  free_until: "",
   page_count: "",
   file_size: "",
   release_date: "",
@@ -120,6 +125,10 @@ function buildJson(f: Form) {
   out.price = num(f.price) ?? 0;
   if (num(f.old_price) != null) out.old_price = num(f.old_price);
   if (num(f.price_usd) != null) out.price_usd = num(f.price_usd);
+  if (f.is_free) {
+    out.is_free = true;
+    if (f.free_until) out.free_until = fromDhakaInput(f.free_until);
+  }
   if (f.release_date) out.release_date = f.release_date;
   out.status = f.status;
   out.badge = f.badge;
@@ -202,6 +211,11 @@ export function JsonBuilder({
             {text1("price", "Price (৳) *", { type: "number" })}
             {text1("old_price", "Old price (৳)", { type: "number" })}
             {text1("price_usd", "Dollar price (US$)", { type: "number", placeholder: "2.99" })}
+            <div className="flex items-end pb-2 sm:col-span-1">
+              <Toggle id="jb-free" label="Free of cost" checked={f.is_free} onChange={(c) => set("is_free", c)} />
+            </div>
+            {f.is_free ? text1("free_until", "Free until (optional)", { type: "datetime-local", hint: "Bangladesh time" }) : <div className="hidden sm:block" />}
+            <div className="hidden sm:block" />
             {text1("page_count", "Pages", { type: "number" })}
             {text1("file_size", "File size", { placeholder: "4.2 MB" })}
             {text1("release_date", "Release date", { type: "date" })}

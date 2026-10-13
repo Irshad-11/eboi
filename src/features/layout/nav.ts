@@ -14,12 +14,15 @@ export type HeaderNav = {
   links: NavItem[];
   /** True when at least one offer is running. */
   hasOffers: boolean;
+  /** True when at least one book is free right now. */
+  hasFree?: boolean;
 };
 
 /** Fixed shop shortcuts, shown first in the row and the drawer. */
 export const QUICK_LINKS = [
   { label: "All books", url: "/shop", key: "all" },
   { label: "Offers", url: "/shop?deals=1", key: "offers" },
+  { label: "Free", url: "/collections/free", key: "free" },
   { label: "New arrivals", url: "/collections/latest", key: "new" },
   { label: "Best sellers", url: "/collections/best-selling", key: "best" },
 ] as const;

@@ -58,6 +58,7 @@ export const HOME_SECTION_TYPES = {
   trust: "Why buy here (4 promises)",
   categories: "Category shortcuts",
   offers: "Offers",
+  free: "Free books row (shows only when a book is free)",
   newest: "Newest book",
   best_selling: "Best selling row",
   latest: "New arrivals row",

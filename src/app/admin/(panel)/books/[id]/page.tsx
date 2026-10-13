@@ -16,7 +16,7 @@ export default async function EditBookPage({ params }: { params: Promise<{ id: s
   if (!z.uuid().safeParse(id).success) notFound();
   const [found, opts] = await Promise.all([adminGetBook(id), adminFormOptions()]);
   if (!found) notFound();
-  const { book, memberOf, reviews } = found;
+  const { book, memberOf, reviews, loggedSales } = found;
 
   return (
     <>
@@ -42,7 +42,7 @@ export default async function EditBookPage({ params }: { params: Promise<{ id: s
           </>
         }
       />
-      <BookForm book={book} memberOf={memberOf} reviews={reviews} {...opts} />
+      <BookForm book={book} memberOf={memberOf} reviews={reviews} loggedSales={loggedSales} {...opts} />
     </>
   );
 }

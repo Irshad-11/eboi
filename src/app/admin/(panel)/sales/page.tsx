@@ -15,7 +15,7 @@ export default async function SalesPage() {
   const [{ data: sales }, { data: months }, { data: books }] = await Promise.all([
     supabase.from("sales_log").select("*").order("sold_at", { ascending: false }).limit(100),
     supabase.from("sales_by_month").select("*").order("month", { ascending: false }).limit(12),
-    supabase.from("books").select("id, title, book_code, price, old_price, offer_id").order("title"),
+    supabase.from("books").select("id, title, book_code, price, old_price, offer_id, is_free, free_until").order("title"),
   ]);
   // Prefill uses the price a buyer would see today, offers included.
   const priced = await withPricing(books ?? []);
