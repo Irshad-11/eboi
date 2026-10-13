@@ -6,6 +6,7 @@ import { SITE } from "@/config/site";
 import { publicEnv } from "@/lib/env";
 import { getSettings } from "@/features/settings/queries";
 import { verificationCode } from "@/features/seo/metadata";
+import { SplashScreen, SplashScript } from "@/features/layout/splash";
 
 /** Site-wide defaults, all from Admin > SEO and Settings. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -42,8 +43,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={fontVariables}>
-      <body>{children}</body>
+    // The splash script sets data-splash on <html> before React loads.
+    <html lang="en" className={fontVariables} suppressHydrationWarning>
+      <body>
+        <SplashScript />
+        <SplashScreen />
+        {children}
+      </body>
     </html>
   );
 }

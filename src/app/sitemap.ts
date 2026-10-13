@@ -43,7 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .filter((c) => c.count > 0)
     .map((c) => ({ url: absoluteUrl(`/category/${c.slug}`), changeFrequency: "weekly" as const, priority: 0.7 }));
 
-  const auto = AUTO_COLLECTION_SLUGS.map((slug) => ({ url: absoluteUrl(`/collections/${slug}`), changeFrequency: "daily" as const, priority: 0.6 }));
+  const auto = AUTO_COLLECTION_SLUGS.filter((slug) => slug !== "free" || books.some((b) => b.pricing.free)).map((slug) => ({ url: absoluteUrl(`/collections/${slug}`), changeFrequency: "daily" as const, priority: 0.6 }));
 
   const custom = collections
     .filter((c) => c.books.length > 0 && !c.noindex)

@@ -35,6 +35,7 @@ export const ADMIN_NAV = [
     items: [
       { href: "/admin/settings", label: "Settings", icon: "settings" },
       { href: "/admin/seo", label: "SEO", icon: "chart" },
+      { href: "/admin/seo-tips", label: "SEO tips", icon: "feather" },
       { href: "/admin/tools", label: "Demo data and storage", icon: "database" },
     ],
   },

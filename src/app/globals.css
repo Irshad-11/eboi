@@ -705,7 +705,7 @@
     animation: stamp 520ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
   }
 
-  /* Header: small dashed "PDF only" box above the logo. */
+  /* Header: "PDF only" stamped at a slight tilt beside the logo. */
   .pdf-only-badge {
     display: inline-flex;
     align-items: center;
@@ -718,6 +718,7 @@
     font-weight: 700;
     line-height: 1.4;
     white-space: nowrap;
+    transform: rotate(-8deg);
   }
   @media (min-width: 48rem) {
     .pdf-only-badge {
@@ -933,6 +934,125 @@
 @keyframes shimmer {
   to {
     background-position: -200% 0;
+  }
+}
+
+/* ------------------------------------------------------------- splash --- */
+/*
+ * The splash is painted over the page, never instead of it: the real content
+ * renders underneath at full speed (loading speed, SEO and crawlers are
+ * unaffected). An inline script adds html[data-splash] only on the first
+ * visit of a session and only when reduced motion is not requested.
+ */
+.splash {
+  display: none;
+}
+html[data-splash] .splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: var(--color-page);
+  cursor: pointer;
+  animation: splash-out 280ms ease-in 1450ms forwards;
+}
+.splash svg {
+  display: block;
+  width: min(54vw, 20rem);
+  height: auto;
+  overflow: visible;
+}
+.splash .wm-rule {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: wm-rule 420ms var(--ease-out) both;
+}
+.splash .wm-letter {
+  animation: wm-stamp 300ms var(--ease-out) both;
+}
+.splash .wm-letter:nth-child(1) {
+  animation-delay: 260ms;
+}
+.splash .wm-letter:nth-child(2) {
+  animation-delay: 360ms;
+}
+.splash .wm-letter:nth-child(3) {
+  animation-delay: 440ms;
+}
+.splash .wm-letter:nth-child(4) {
+  animation-delay: 520ms;
+}
+.splash .wm-dot {
+  animation: wm-dot 260ms var(--ease-out) 760ms both;
+}
+.splash-stamp {
+  position: absolute;
+  top: -0.125rem;
+  left: calc(100% + 0.125rem);
+  padding: 0.125rem 0.4375rem;
+  border: 2px dashed var(--color-brand);
+  border-radius: 6px;
+  color: var(--color-brand);
+  background: var(--color-brand-soft);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  white-space: nowrap;
+  transform: rotate(-10deg);
+  animation: splash-stamp 380ms cubic-bezier(0.2, 0.9, 0.3, 1.3) 720ms both;
+}
+.splash-skip {
+  animation: fade-in 300ms ease-out 600ms both;
+}
+/* The announcement bar waits for the splash, so its slide-down is still seen. */
+html[data-splash] .notice-bar,
+html[data-splash] .notice-slide,
+html[data-splash] .notice-bar::after {
+  animation-play-state: paused;
+}
+@keyframes wm-rule {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+/* Each letter lands like type pressed onto paper. */
+@keyframes wm-stamp {
+  from {
+    opacity: 0;
+    transform: translateY(-14%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes wm-dot {
+  from {
+    opacity: 0;
+    transform: translateY(-60%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes splash-stamp {
+  from {
+    opacity: 0;
+    transform: scale(2) rotate(-18deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-10deg);
+  }
+}
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
   }
 }
 

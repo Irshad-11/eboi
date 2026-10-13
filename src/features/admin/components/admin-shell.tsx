@@ -11,6 +11,7 @@ import {
   IconDashboard,
   IconDatabase,
   IconExternal,
+  IconFeather,
   IconFile,
   IconImage,
   IconLayers,
@@ -47,6 +48,7 @@ const ICONS = {
   chart: IconChart,
   database: IconDatabase,
   spark: IconSpark,
+  feather: IconFeather,
 } as const;
 
 /** Admin frame: sidebar on desktop, top bar with a drawer on phones. */
