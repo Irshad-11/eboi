@@ -1,13 +1,15 @@
 import { AdminPageHead } from "@/features/admin/components/admin-page-head";
 import { CollectionForm } from "@/features/admin/components/collection-form";
+import { getSettings } from "@/features/settings/queries";
 
-export const metadata = { title: "New collection" };
+export const metadata = { title: "Add collection" };
 
-export default function NewCollectionPage() {
+export default async function NewCollectionPage() {
+  const s = await getSettings();
   return (
     <>
-      <AdminPageHead kicker="Collections" title="New collection" />
-      <CollectionForm collection={null} />
+      <AdminPageHead title="Add collection" back={{ href: "/admin/collections", label: "Collections" }} />
+      <CollectionForm collection={null} titleTemplate={s.title_template} />
     </>
   );
 }

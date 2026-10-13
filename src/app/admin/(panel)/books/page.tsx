@@ -1,12 +1,11 @@
 import Link from "next/link";
-import Image from "next/image";
 import { formatPrice, formatDate, formatCompact } from "@/lib/format";
 import { coverUrl } from "@/features/books/cover";
 import { adminListBooks } from "@/features/admin/queries";
 import { deleteBook } from "@/features/admin/actions/books";
 import { AdminPageHead } from "@/features/admin/components/admin-page-head";
 import { DeleteButton } from "@/features/admin/components/delete-button";
-import { IconDownload, IconPlus } from "@/components/icons";
+import { IconChart, IconDownload, IconEdit, IconPlus, IconSearch } from "@/components/icons";
 
 export const metadata = { title: "Books" };
 
@@ -16,94 +15,96 @@ export default async function AdminBooksPage({ searchParams }: Props) {
   const { q = "", status = "" } = await searchParams;
   const all = await adminListBooks();
   const needle = q.trim().toLowerCase();
-  const books = all.filter(
-    (b) =>
-      (!status || b.status === status) &&
-      (!needle || [b.title, b.author, b.book_code, b.slug].join(" ").toLowerCase().includes(needle)),
-  );
+  const books = all.filter((b) => (!status || b.status === status) && (!needle || [b.title, b.author, b.book_code, b.slug].join(" ").toLowerCase().includes(needle)));
   const drafts = all.filter((b) => b.status === "draft").length;
 
   return (
     <>
       <AdminPageHead
-        kicker={`${all.length} books · ${drafts} drafts`}
         title="Books"
+        meta={`${all.length} books · ${drafts} drafts`}
         actions={
           <>
-            <a href="/api/admin/export" className="btn btn-outline btn-sm">
-              <IconDownload size={18} /> Export all
+            <a href="/api/admin/export" className="btn btn-secondary">
+              <IconDownload size={18} /> Export
             </a>
-            <Link href="/admin/books/new" className="btn btn-primary btn-sm">
-              <IconPlus size={18} /> New book
+            <Link href="/admin/books/new" className="btn btn-primary">
+              <IconPlus size={18} /> Add book
             </Link>
           </>
         }
       />
 
-      <form className="mb-6 flex flex-wrap gap-3" role="search">
-        <label htmlFor="q" className="sr-only">
-          Search
-        </label>
-        <input id="q" name="q" defaultValue={q} placeholder="Title, author or EB-0001" className="input max-w-xs" />
-        <label htmlFor="status" className="sr-only">
-          Status
-        </label>
-        <select id="status" name="status" defaultValue={status} className="select max-w-[12rem]">
-          <option value="">All statuses</option>
-          <option value="published">Published</option>
-          <option value="draft">Drafts</option>
-        </select>
-        <button className="btn btn-outline btn-sm">Filter</button>
-      </form>
+      <div className="rounded-lg border border-line bg-white">
+        <form className="flex flex-wrap gap-2 border-b border-line p-3" role="search">
+          <div className="relative min-w-0 basis-full sm:basis-0 sm:flex-1">
+            <label htmlFor="q" className="sr-only">
+              Search books
+            </label>
+            <IconSearch size={18} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-3" />
+            <input id="q" name="q" defaultValue={q} placeholder="Title, author or Book ID" className="input pl-9" />
+          </div>
+          <label htmlFor="status" className="sr-only">
+            Status
+          </label>
+          <select id="status" name="status" defaultValue={status} className="select min-w-0 flex-1 sm:w-40 sm:flex-none">
+            <option value="">All</option>
+            <option value="published">Published</option>
+            <option value="draft">Drafts</option>
+          </select>
+          <button className="btn btn-secondary">Filter</button>
+        </form>
 
-      {books.length === 0 ? (
-        <p className="text-ink-2">
-          No books yet. <Link href="/admin/books/new" className="link">Add the first one</Link> or load demo data from{" "}
-          <Link href="/admin/tools" className="link">Demo data</Link>.
-        </p>
-      ) : (
-        <ul className="border-t-[3px] border-ink">
-          {books.map((b) => {
-            const cover = coverUrl(b);
-            return (
-              <li key={b.id} className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-ink py-3 md:grid-cols-[3rem_minmax(0,2fr)_6rem_6rem_8rem_auto] md:gap-5">
-                <div className="cover w-12">{/* unoptimized: drafts are admin-only, and the optimizer would fetch without the admin's cookie. */}
-                  {cover && <Image src={cover} alt="" fill sizes="48px" unoptimized />}</div>
-                <div className="min-w-0">
-                  <Link href={`/admin/books/${b.id}`} className="line-clamp-1 font-semibold hover:underline">
-                    {b.title}
-                  </Link>
-                  <p className="micro mt-1 flex flex-wrap gap-x-2 text-ink-3">
-                    <span className="text-ink">{b.book_code}</span>
-                    <span className={b.status === "published" ? "text-green-700" : "text-ochre-ink"}>{b.status}</span>
-                    {b.is_demo && <span>demo</span>}
-                    {!b.preview_path && <span>no preview</span>}
-                    <span className="md:hidden">{formatPrice(b.price)}</span>
-                  </p>
-                </div>
-                <span className="price hidden text-small md:block">{formatPrice(b.price)}</span>
-                <span className="micro hidden text-ink-2 md:block">
-                  {formatCompact(b.total_sells)} sold
-                  <br />
-                  {formatCompact(b.views)} views
-                </span>
-                <span className="micro hidden text-ink-3 md:block">{formatDate(b.updated_at)}</span>
-                <div className="flex items-center">
-                  <Link href={`/admin/books/${b.id}/analytics`} className="btn btn-quiet btn-sm hidden sm:inline-flex">
-                    Stats
-                  </Link>
-                  <DeleteButton
-                    compact
-                    label={`“${b.title}”`}
-                    consequence="The book, its cover and its preview file are deleted from Supabase. Logged sales keep their title and price snapshot."
-                    action={deleteBook.bind(null, b.id)}
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+        {books.length === 0 ? (
+          <div className="p-8 text-center">
+            <p className="text-base text-text-2">No books found.</p>
+            <Link href="/admin/books/new" className="btn btn-primary mt-3">
+              Add book
+            </Link>
+          </div>
+        ) : (
+          <ul className="divide-y divide-line">
+            {books.map((b) => {
+              const cover = coverUrl(b);
+              return (
+                <li key={b.id} className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 md:grid-cols-[2.75rem_minmax(0,1fr)_6rem_7rem_7rem_auto] md:gap-4 md:px-4">
+                  <div className="cover-frame w-11">
+                    {/* Plain img: drafts are admin-only and the image optimizer cannot fetch them. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
+                    {cover && <img src={cover} alt="" />}
+                  </div>
+                  <div className="min-w-0">
+                    <Link href={`/admin/books/${b.id}`} className="line-clamp-1 text-base font-semibold hover:text-brand">
+                      {b.title}
+                    </Link>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-3">
+                      <span>{b.book_code}</span>
+                      <span className={`badge ${b.status === "published" ? "badge-ok" : "badge-soft"}`}>{b.status === "published" ? "Published" : "Draft"}</span>
+                      {!b.preview_path && <span className="badge badge-warn">No preview</span>}
+                      {b.is_demo && <span className="badge badge-soft">Demo</span>}
+                      <span className="md:hidden">{formatPrice(Number(b.price))}</span>
+                    </p>
+                  </div>
+                  <span className="hidden text-base font-semibold md:block tnum">{formatPrice(Number(b.price))}</span>
+                  <span className="hidden text-sm text-text-3 md:block">
+                    {formatCompact(b.total_sells)} sold · {formatCompact(b.views)} views
+                  </span>
+                  <span className="hidden text-sm text-text-3 md:block">{formatDate(b.updated_at)}</span>
+                  <div className="flex items-center">
+                    <Link href={`/admin/books/${b.id}`} className="btn btn-ghost btn-icon btn-sm" aria-label={`Edit ${b.title}`} title="Edit">
+                      <IconEdit size={16} />
+                    </Link>
+                    <Link href={`/admin/books/${b.id}/analytics`} className="btn btn-ghost btn-icon btn-sm hidden sm:inline-flex" aria-label={`Analytics for ${b.title}`} title="Analytics">
+                      <IconChart size={16} />
+                    </Link>
+                    <DeleteButton compact label={`“${b.title}”`} consequence="The book, its cover, preview and images are deleted. Logged sales keep their title and price." action={deleteBook.bind(null, b.id)} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </>
   );
 }

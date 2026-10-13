@@ -3,22 +3,22 @@
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { publicEnv } from "@/lib/env";
-import { IconChat } from "@/components/icons";
+import { IconWhatsApp } from "@/components/icons";
 import { track } from "@/features/analytics/client";
 import { useShop } from "@/features/layout/shop-context";
 import { buildSingleMessage, type MessageBook } from "./message";
-import { WhatsAppSheet } from "./whatsapp-sheet";
+import { OrderDialog } from "./order-dialog";
 
 type Props = {
   book: MessageBook & { id: string };
   section: string;
   label?: string;
-  variant?: "primary" | "on-dark" | "outline";
+  size?: "sm" | "md" | "lg";
   className?: string;
 };
 
-/** The main call to action on every book. */
-export function BuyButton({ book, section, label = "Get it on WhatsApp", variant = "primary", className }: Props) {
+/** Primary call to action on every book: opens the order dialog. */
+export function BuyButton({ book, section, label = "Order on WhatsApp", size = "md", className }: Props) {
   const shop = useShop();
   const [open, setOpen] = useState(false);
   const message = buildSingleMessage(shop.whatsapp_template, book, shop.currency_symbol, publicEnv.siteUrl);
@@ -27,16 +27,16 @@ export function BuyButton({ book, section, label = "Get it on WhatsApp", variant
     <>
       <button
         type="button"
-        className={cn("btn", `btn-${variant}`, className)}
+        className={cn("btn btn-primary", size === "lg" && "btn-lg", size === "sm" && "btn-sm", className)}
         onClick={() => {
           setOpen(true);
           track("whatsapp_click", { bookId: book.id, section });
         }}
       >
-        <IconChat />
+        <IconWhatsApp size={size === "sm" ? 16 : 18} />
         {label}
       </button>
-      <WhatsAppSheet open={open} onClose={() => setOpen(false)} message={message} bookIds={[book.id]} section={section} />
+      <OrderDialog open={open} onClose={() => setOpen(false)} message={message} bookIds={[book.id]} section={section} />
     </>
   );
 }

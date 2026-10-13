@@ -18,10 +18,13 @@ export async function GET(req: NextRequest) {
   const supabase = await createSessionClient();
   let query = supabase.from("books").select("*").order("book_code");
   if (id) query = query.eq("id", id);
-  const [{ data: books, error }, { data: members }, { data: cols }] = await Promise.all([
+  let reviewQuery = supabase.from("book_reviews").select("*").order("sort_order");
+  if (id) reviewQuery = reviewQuery.eq("book_id", id);
+  const [{ data: books, error }, { data: members }, { data: cols }, { data: reviews }] = await Promise.all([
     query,
     supabase.from("collection_books").select("book_id, collection_id"),
     supabase.from("collections").select("id, slug"),
+    reviewQuery,
   ]);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (id && !books?.length) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -32,6 +35,7 @@ export async function GET(req: NextRequest) {
       b,
       (members ?? []).filter((m) => m.book_id === b.id).flatMap((m) => (slugById.has(m.collection_id) ? [slugById.get(m.collection_id)!] : [])),
       publicEnv.siteUrl,
+      (reviews ?? []).filter((r) => r.book_id === b.id),
     ),
   );
   const body = JSON.stringify(id ? out[0] : out, null, 2);

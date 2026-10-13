@@ -1,36 +1,34 @@
 import { cn } from "@/lib/cn";
 import type { BookCard } from "../types";
-import { BookTile } from "./book-tile";
+import { ProductCard } from "./product-card";
 
-/**
- * Catalogue grid. Two columns at 360px (covers stay big enough to read the
- * title), five at desktop: catalogue density like a real bookshop shelf.
- */
-const COLS = {
-  // Catalogue density for the shop.
-  5: "sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
-  // Shelves inside a narrower column or with a fixed count of 4/8.
-  4: "sm:grid-cols-3 lg:grid-cols-4",
-} as const;
-
+/** Product grid: 2 columns at 360px up to 5 on wide screens (4 inside a sidebar layout). */
 export function BookGrid({
   books,
   symbol,
+  section,
   className,
   priorityCount = 0,
-  cols = 5,
+  withSidebar = false,
 }: {
   books: BookCard[];
   symbol: string;
+  section: string;
   className?: string;
   priorityCount?: number;
-  cols?: keyof typeof COLS;
+  withSidebar?: boolean;
 }) {
   return (
-    <ul className={cn("grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6", COLS[cols], className)}>
+    <ul
+      className={cn(
+        "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4",
+        withSidebar ? "lg:grid-cols-3 xl:grid-cols-4" : "md:grid-cols-4 xl:grid-cols-5",
+        className,
+      )}
+    >
       {books.map((b, i) => (
         <li key={b.id} className="min-w-0">
-          <BookTile book={b} symbol={symbol} priority={i < priorityCount} />
+          <ProductCard book={b} symbol={symbol} section={section} priority={i < priorityCount} />
         </li>
       ))}
     </ul>

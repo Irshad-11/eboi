@@ -1,23 +1,17 @@
+import { cn } from "@/lib/cn";
 import type { BookBadge } from "@/lib/supabase/database.types";
-import type { Pricing } from "@/features/offers/pricing";
+import { discountLabel, type Pricing } from "@/features/offers/pricing";
 
-type Props = {
-  badge: BookBadge;
-  pricing?: Pricing;
-  isDemo?: boolean;
-  className?: string;
-};
+/** Red discount badge, computed from the real offer or old price. */
+export function DiscountBadge({ pricing, symbol, className }: { pricing: Pricing; symbol: string; className?: string }) {
+  const label = discountLabel(pricing, symbol);
+  if (!label) return null;
+  return <span className={cn("badge badge-sale", className)}>{label}</span>;
+}
 
-/** Badges are rare on purpose: at most one status badge plus an offer flag. */
-export function BookBadges({ badge, pricing, isDemo, className }: Props) {
-  const offer = pricing?.offer && pricing.savePercent ? `${pricing.savePercent}% off` : null;
-  if (badge === "none" && !offer && !isDemo) return null;
-  return (
-    <span className={className ?? "flex flex-wrap gap-1.5"}>
-      {badge === "new" && <span className="badge badge-new">New</span>}
-      {badge === "bestseller" && <span className="badge badge-bestseller">Bestseller</span>}
-      {offer && <span className="badge badge-offer">{offer}</span>}
-      {isDemo && <span className="badge badge-demo">Demo</span>}
-    </span>
-  );
+/** Status badge set by the admin ("New", "Bestseller"). */
+export function StatusBadge({ badge, className }: { badge: BookBadge; className?: string }) {
+  if (badge === "new") return <span className={cn("badge badge-new", className)}>New</span>;
+  if (badge === "bestseller") return <span className={cn("badge badge-best", className)}>Bestseller</span>;
+  return null;
 }

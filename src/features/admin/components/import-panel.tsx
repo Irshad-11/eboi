@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { IMPORT } from "@/config/limits";
 import { IconUpload } from "@/components/icons";
 import { prepareImport, saveBook, discardUploads, type ImportPlan } from "../actions/books";
-import { checkCover, checkPreview, uploadCover, uploadPreview } from "../uploads";
+import { checkCover, checkPreview, makePreviewThumbs, uploadCover, uploadPreview } from "../uploads";
+import { AdminCard } from "./admin-page-head";
 import { Notice } from "./notice";
 
 type Log = { tone: "ok" | "error" | "info"; text: string };
@@ -64,7 +65,7 @@ export function ImportPanel() {
       return false;
     }
     const p = prep.data;
-    const uploaded: { cover?: string; preview?: string } = {};
+    const uploaded: { cover?: string; preview?: string; thumbs?: string[] } = {};
     try {
       if (files.cover) {
         const c = await checkCover(files.cover);
@@ -75,6 +76,7 @@ export function ImportPanel() {
         const c = await checkPreview(files.preview);
         if (!c.ok) throw new Error(c.error);
         uploaded.preview = await uploadPreview(p.id, files.preview);
+        uploaded.thumbs = await makePreviewThumbs(p.id, files.preview).catch(() => []);
       }
       const res = await saveBook({
         id: p.id,
@@ -84,6 +86,8 @@ export function ImportPanel() {
         collectionIds: p.collectionIds,
         cover: uploaded.cover ? { path: uploaded.cover } : null,
         preview: uploaded.preview ? { path: uploaded.preview } : null,
+        thumbs: uploaded.thumbs ?? null,
+        reviews: p.reviews ?? null,
       });
       if (!res.ok) throw new Error(`${res.error} ${Object.entries(res.fieldErrors ?? {}).map(([k, v]) => `${k}: ${v}`).join("; ")}`);
       add({ tone: "ok", text: `${p.mode === "create" ? "Created" : "Updated"} “${p.values.title}”.` });
@@ -113,87 +117,95 @@ export function ImportPanel() {
 
   const mismatch = (hint: string | undefined, file: File | null) => hint && file && hint !== file.name;
 
+  const fileClass =
+    "block w-full text-sm text-text-2 file:mr-3 file:h-10 file:cursor-pointer file:rounded-md file:border file:border-line-2 file:bg-white file:px-3 file:text-sm file:font-medium file:text-text hover:file:border-brand hover:file:text-brand disabled:opacity-50";
+
   return (
-    <div className="grid gap-10 lg:grid-cols-12">
-      <div className="space-y-6 lg:col-span-7">
-        <Step n={1} title="Book JSON" hint="One book (object) with files, or many books (array) without files.">
-          <input type="file" accept="application/json,.json" onChange={(e) => onJson(e.target.files?.[0])} className="block w-full text-small file:mr-3 file:min-h-11 file:border-2 file:border-ink file:bg-paper-raised file:px-3 file:font-semibold" />
-        </Step>
-        <Step n={2} title="Cover (optional)" hint={hints.cover ? `The JSON expects “${hints.cover}”.` : "JPG or PNG, 2:3."}>
-          <input type="file" accept="image/jpeg,image/png" disabled={Array.isArray(json)} onChange={(e) => setCover(e.target.files?.[0] ?? null)} className="block w-full text-small file:mr-3 file:min-h-11 file:border-2 file:border-ink file:bg-paper-raised file:px-3 file:font-semibold" />
-          {mismatch(hints.cover, cover) && <p className="field-hint text-ochre-ink">File name differs from the JSON. Check it is the right cover.</p>}
-        </Step>
-        <Step n={3} title="Preview PDF (optional)" hint={hints.preview ? `The JSON expects “${hints.preview}”.` : "The first pages only."}>
-          <input type="file" accept="application/pdf,.pdf" disabled={Array.isArray(json)} onChange={(e) => setPreview(e.target.files?.[0] ?? null)} className="block w-full text-small file:mr-3 file:min-h-11 file:border-2 file:border-ink file:bg-paper-raised file:px-3 file:font-semibold" />
-          {mismatch(hints.preview, preview) && <p className="field-hint text-ochre-ink">File name differs from the JSON. Check it is the right preview.</p>}
-        </Step>
+    <div className="grid gap-4 lg:grid-cols-12">
+      <AdminCard title="Import books" className="lg:col-span-7">
+        <div className="space-y-5">
+          <Step n={1} title="Book JSON" hint="One book (object) with files, or many books (array) without files.">
+            <input type="file" accept="application/json,.json" aria-label="Book JSON file" onChange={(e) => onJson(e.target.files?.[0])} className={fileClass} />
+          </Step>
+          <Step n={2} title="Cover (optional)" hint={hints.cover ? `The JSON expects “${hints.cover}”.` : "JPG or PNG, 2:3."}>
+            <input type="file" accept="image/jpeg,image/png" aria-label="Cover image" disabled={Array.isArray(json)} onChange={(e) => setCover(e.target.files?.[0] ?? null)} className={fileClass} />
+            {mismatch(hints.cover, cover) && <p className="mt-1.5 text-sm text-warn">File name differs from the JSON. Check it is the right cover.</p>}
+          </Step>
+          <Step n={3} title="Preview PDF (optional)" hint={hints.preview ? `The JSON expects “${hints.preview}”.` : "The first pages only."}>
+            <input type="file" accept="application/pdf,.pdf" aria-label="Preview PDF" disabled={Array.isArray(json)} onChange={(e) => setPreview(e.target.files?.[0] ?? null)} className={fileClass} />
+            {mismatch(hints.preview, preview) && <p className="mt-1.5 text-sm text-warn">File name differs from the JSON. Check it is the right preview.</p>}
+          </Step>
 
-        {plan && (
-          <div className="border-2 border-ink bg-paper-raised p-5">
-            <p className="label text-ink-3">{jsonName}</p>
-            <p className="mt-2 text-title font-semibold">{plan.values.title}</p>
-            <p className="mt-1 text-small">
-              Will <strong>{plan.mode === "create" ? "create a new book" : "update the existing book"}</strong>
-              {plan.bookCode ? ` with Book ID ${plan.bookCode}` : ""}. Collections: {plan.collectionIds.length}
-              {plan.unknownCollections.length ? ` (unknown: ${plan.unknownCollections.join(", ")})` : ""}.
-            </p>
-          </div>
-        )}
+          {plan && (
+            <div className="rounded-md border border-line bg-muted p-3">
+              <p className="text-sm text-text-3">{jsonName}</p>
+              <p className="mt-1 text-md font-semibold">{plan.values.title}</p>
+              <p className="mt-1 text-sm text-text-2">
+                Will <strong>{plan.mode === "create" ? "create a new book" : "update the existing book"}</strong>
+                {plan.bookCode ? ` with Book ID ${plan.bookCode}` : ""}. Collections: {plan.collectionIds.length}
+                {plan.unknownCollections.length ? ` (unknown: ${plan.unknownCollections.join(", ")})` : ""}.
+              </p>
+            </div>
+          )}
 
-        <button type="button" onClick={run} disabled={!json || busy || (!Array.isArray(json) && !plan)} className="btn btn-primary">
-          <IconUpload size={18} />
-          {busy ? "Importing…" : Array.isArray(json) ? `Import ${json.length} books` : "Import this book"}
-        </button>
+          <button type="button" onClick={run} disabled={!json || busy || (!Array.isArray(json) && !plan)} data-loading={busy} className="btn btn-primary">
+            <IconUpload size={18} />
+            {Array.isArray(json) ? `Import ${json.length} books` : "Import this book"}
+          </button>
 
-        <div className="space-y-2" aria-live="polite">
-          {log.map((l, i) => (
-            <Notice key={i} tone={l.tone}>
-              {l.text}
-            </Notice>
-          ))}
+          {log.length > 0 && (
+            <div className="space-y-2" aria-live="polite">
+              {log.map((l, i) => (
+                <Notice key={i} tone={l.tone}>
+                  {l.text}
+                </Notice>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      </AdminCard>
 
-      <aside className="space-y-4 lg:col-span-5">
-        <div className="border-t-[3px] border-ink pt-4">
-          <h2 className="text-title font-semibold">The format</h2>
-          <p className="mt-2 text-small text-ink-2">
-            Match by <span className="font-mono">book_code</span> first, then <span className="font-mono">slug</span>. A match is updated, otherwise a
-            new book is created. Collections are listed by slug.
-          </p>
-          <ul className="mt-4 space-y-2 text-small">
-            <li>
-              <a href="/sample-book.json" download className="link">
-                Download the sample book JSON
-              </a>
-            </li>
-            <li>
-              <a href="/book-import.schema.json" target="_blank" className="link">
-                JSON Schema (for editors that validate)
-              </a>
-            </li>
-            <li>
-              <a href="/api/admin/export" className="link">
-                Export every book as JSON (backup)
-              </a>
-            </li>
-            <li>
-              Single-book export: the <span className="font-mono">JSON</span> button on each <Link href="/admin/books" className="link">book page</Link>.
-            </li>
-          </ul>
-        </div>
-      </aside>
+      <AdminCard title="Format and export" className="self-start lg:col-span-5">
+        <p className="text-sm text-text-2">
+          Books are matched by <code>book_code</code> first, then <code>slug</code>. A match is updated, otherwise a new book is created. Collections are listed by
+          slug.
+        </p>
+        <ul className="mt-3 space-y-2 text-sm">
+          <li>
+            <a href="/sample-book.json" download className="link">
+              Download the sample book JSON
+            </a>
+          </li>
+          <li>
+            <a href="/book-import.schema.json" target="_blank" className="link">
+              JSON Schema
+            </a>
+          </li>
+          <li>
+            <a href="/api/admin/export" className="link">
+              Export every book as JSON
+            </a>
+          </li>
+          <li className="text-text-2">
+            One book: use <strong>Export JSON</strong> on its{" "}
+            <Link href="/admin/books" className="link">
+              edit page
+            </Link>
+            .
+          </li>
+        </ul>
+      </AdminCard>
     </div>
   );
 }
 
 function Step({ n, title, hint, children }: { n: number; title: string; hint: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 border-t border-ink pt-4">
-      <span className="text-[2rem] leading-none font-medium text-green-700 italic tnum">{n}</span>
-      <div className="min-w-0">
-        <p className="font-semibold">{title}</p>
-        <p className="field-hint mt-0 mb-3">{hint}</p>
+    <div className="flex gap-3">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand-ink">{n}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-base font-semibold">{title}</p>
+        <p className="mb-2 text-sm text-text-3">{hint}</p>
         {children}
       </div>
     </div>

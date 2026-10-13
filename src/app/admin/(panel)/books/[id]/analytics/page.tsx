@@ -23,29 +23,29 @@ export default async function BookAnalyticsPage({ params, searchParams }: Props)
   return (
     <>
       <AdminPageHead
-        kicker={`${book.book_code} · last ${days} days`}
         title={book.title}
+        back={{ href: `/admin/books/${id}`, label: "Edit book" }}
+        meta={`${book.book_code} · last ${days} days`}
         actions={
           <>
             <RangePicker value={days} basePath={`/admin/books/${id}/analytics`} />
-            <Link href={`/admin/books/${id}`} className="btn btn-outline btn-sm">
+            <Link href={`/admin/books/${id}`} className="btn btn-secondary btn-sm">
               Edit book
             </Link>
           </>
         }
       />
-      {/* Public display numbers are editable; real tracked numbers are never mixed in. */}
-      <div className="mb-8 grid gap-px border-2 border-ink bg-ink sm:grid-cols-2">
-        <div className="bg-paper-2 p-4">
-          <p className="label text-ink-3">Shown on the site (display values)</p>
-          <p className="mt-2 font-mono text-small">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-line bg-muted p-4">
+          <p className="text-sm font-semibold text-text-2">Shown on the site</p>
+          <p className="mt-1 text-sm tnum">
             {formatNumber(book.views)} views · {formatNumber(book.total_sells)} sold · {Number(book.rating).toFixed(1)} rating ({formatNumber(book.rating_count)})
           </p>
         </div>
-        <div className="bg-paper p-4">
-          <p className="label text-ink-3">Real, tracked in this period</p>
-          <p className="mt-2 font-mono text-small">
-            {formatNumber(data.current.book_views)} views · {formatNumber(data.current.sales)} sold · {formatNumber(data.current.visitors)} unique visitors
+        <div className="rounded-lg border border-line bg-white p-4">
+          <p className="text-sm font-semibold text-text-2">Tracked in this period</p>
+          <p className="mt-1 text-sm tnum">
+            {formatNumber(data.current.book_views)} views · {formatNumber(data.current.sales)} sold · {formatNumber(data.current.visitors)} visitors
           </p>
         </div>
       </div>

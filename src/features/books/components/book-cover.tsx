@@ -6,36 +6,46 @@ type Props = {
   src: string | null;
   title: string;
   author?: string;
-  /** next/image sizes hint. Keep it honest: it decides how many bytes phones download. */
+  alt?: string | null;
   sizes: string;
   priority?: boolean;
   className?: string;
+  /** Unoptimized for admin-only (draft) covers that the optimizer cannot fetch. */
+  unoptimized?: boolean;
 };
 
-/**
- * The one cover treatment used everywhere: 2:3 crop, flat, hard offset
- * shadow, printed spine. Books without a cover get a typeset stand-in in the
- * same frame instead of a grey box.
- */
-export function BookCover({ src, title, author, sizes, priority, className }: Props) {
+const FALLBACK = ["#1d5c42", "#2f4f5f", "#8a4b2d", "#55602b", "#34507a", "#7a2f3b"];
+
+function colorFor(title: string): string {
+  let h = 0;
+  for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
+  return FALLBACK[h % FALLBACK.length]!;
+}
+
+/** Book cover in a fixed 2:3 frame. Books without a cover get a plain title block. */
+export function BookCover({ src, title, author, alt, sizes, priority, className, unoptimized }: Props) {
   return (
-    <div className={cn("cover", className)}>
+    <div className={cn("cover-frame", className)}>
       {src ? (
         <Image
           src={src}
-          alt={`Cover of ${title}${author ? ` by ${author}` : ""}`}
+          alt={alt || `Cover of ${title}${author ? ` by ${author}` : ""}`}
           fill
           sizes={sizes}
           priority={priority}
-          className="object-cover"
+          unoptimized={unoptimized}
         />
       ) : (
-        <div className="absolute inset-0 flex flex-col justify-between bg-green-800 p-[9%] pl-[13%] text-paper">
-          <span className="micro text-green-300">eBoi PDF</span>
-          <span lang={langOf(title)} className="text-[clamp(0.9rem,3.2vw,1.5rem)] leading-tight font-semibold">
+        <div
+          className="absolute inset-0 flex flex-col justify-end gap-1 p-[10%] text-white [container-type:inline-size]"
+          style={{ background: colorFor(title) }}
+          role="img"
+          aria-label={`Cover of ${title}`}
+        >
+          <span lang={langOf(title)} className="line-clamp-4 text-[clamp(0.5rem,11cqi,1.25rem)] leading-tight font-semibold">
             {title}
           </span>
-          {author ? <span className="micro text-green-100">{author}</span> : <span />}
+          {author && <span className="line-clamp-1 text-[clamp(0.45rem,7cqi,0.8rem)] opacity-85">{author}</span>}
         </div>
       )}
     </div>

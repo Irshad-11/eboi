@@ -1,39 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { getBrowserClient } from "@/lib/supabase/browser";
+import { useActionState } from "react";
+import { signIn, type LoginState } from "./actions/auth";
 
 export function LoginForm() {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    const form = new FormData(e.currentTarget);
-    const { error } = await getBrowserClient().auth.signInWithPassword({
-      email: String(form.get("email") ?? ""),
-      password: String(form.get("password") ?? ""),
-    });
-    if (error) {
-      setError("Wrong email or password.");
-      setBusy(false);
-      return;
-    }
-    router.replace("/admin");
-    router.refresh();
-  }
-
+  const [state, action, pending] = useActionState<LoginState, FormData>(signIn, { error: null, email: "" });
   return (
-    <form onSubmit={onSubmit} className="mt-8 max-w-sm space-y-5">
+    <form action={action} className="mt-6 space-y-4" noValidate>
+      {state.error && (
+        <div role="alert" className="rounded-md border border-sale/30 bg-sale-soft px-3 py-2.5 text-sm break-words text-sale">
+          {state.error}
+        </div>
+      )}
       <div>
         <label htmlFor="email" className="field-label">
           Email
         </label>
-        <input id="email" name="email" type="email" autoComplete="username" required className="input" />
+        <input id="email" name="email" type="email" autoComplete="username" required defaultValue={state.email} className="input" aria-invalid={Boolean(state.error) || undefined} />
       </div>
       <div>
         <label htmlFor="password" className="field-label">
@@ -41,13 +24,8 @@ export function LoginForm() {
         </label>
         <input id="password" name="password" type="password" autoComplete="current-password" required className="input" />
       </div>
-      {error && (
-        <p className="field-error" role="alert">
-          {error}
-        </p>
-      )}
-      <button className="btn btn-primary btn-block" disabled={busy}>
-        {busy ? "Signing in…" : "Sign in"}
+      <button className="btn btn-primary btn-block" data-loading={pending} disabled={pending}>
+        Sign in
       </button>
     </form>
   );

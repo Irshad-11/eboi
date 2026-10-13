@@ -19,7 +19,10 @@ export type ActiveOffer = {
   collectionIds: string[];
 };
 
-export type AppliedOffer = Pick<ActiveOffer, "id" | "title" | "banner_text" | "end_at" | "show_countdown">;
+export type AppliedOffer = Pick<
+  ActiveOffer,
+  "id" | "title" | "banner_text" | "end_at" | "show_countdown" | "discount_type" | "value"
+>;
 
 export type Pricing = {
   /** The book's list price. */
@@ -75,12 +78,12 @@ export function priceBook(
   }
 
   if (best) {
-    const { id, title, banner_text, end_at, show_countdown } = best.offer;
+    const { id, title, banner_text, end_at, show_countdown, discount_type, value } = best.offer;
     return {
       base,
       final: best.final,
       was: base,
-      offer: { id, title, banner_text, end_at, show_countdown },
+      offer: { id, title, banner_text, end_at, show_countdown, discount_type, value: Number(value) },
       savePercent: base > 0 ? Math.round(((base - best.final) / base) * 100) : null,
     };
   }
@@ -99,4 +102,15 @@ export function priceBook(
 /** Short human description of a discount: "20% off", "৳50 off". */
 export function describeDiscount(type: DiscountType, value: number, symbol: string): string {
   return type === "percent" ? `${Number(value)}% off` : `${symbol}${Number(value)} off`;
+}
+
+/**
+ * Badge text from the real values: "20% off" for percent offers, "৳50 off"
+ * for fixed ones, and a rounded percent for a manual old price.
+ */
+export function discountLabel(p: Pricing, symbol: string): string | null {
+  if (p.was == null || p.was <= p.final) return null;
+  if (p.offer?.discount_type === "fixed") return `${symbol}${Math.round(p.was - p.final)} off`;
+  if (p.offer?.discount_type === "percent") return `${Number(p.offer.value)}% off`;
+  return `${Math.round(((p.was - p.final) / p.was) * 100)}% off`;
 }

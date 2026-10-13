@@ -68,21 +68,40 @@ export function toLite(b: BookCard): BookLite {
     book_code: b.book_code,
     coverUrl: coverUrl(b),
     pricing: b.pricing,
+    rating: Number(b.rating),
+    rating_count: b.rating_count,
     is_demo: b.is_demo,
   };
 }
 
+/** Visible reviews (admin-entered testimonials) for a published book. */
+export const getBookReviews = cache(async (bookId: string) => {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await createPublicClient()
+    .from("book_reviews")
+    .select("id, author_name, rating, body, review_date")
+    .eq("book_id", bookId)
+    .eq("is_visible", true)
+    .order("sort_order")
+    .order("review_date", { ascending: false });
+  if (error) console.error("[reviews] read failed:", error.message);
+  return data ?? [];
+});
+
 /** Related titles: same category first, then shared tags. */
 export function relatedBooks(book: { id: string; category: string; tags: string[] }, all: BookCard[], limit = 4) {
   const tags = new Set(book.tags);
-  return all
-    .filter((b) => b.id !== book.id)
+  const others = all.filter((b) => b.id !== book.id);
+  const matched = others
     .map((b) => ({
       b,
       score: (b.category === book.category ? 3 : 0) + b.tags.filter((t) => tags.has(t)).length,
     }))
     .filter((x) => x.score > 0)
     .sort((x, y) => y.score - x.score || y.b.total_sells - x.b.total_sells)
-    .slice(0, limit)
     .map((x) => x.b);
+  // Top up a short row with best sellers so the shelf never looks empty.
+  const seen = new Set(matched.map((b) => b.id));
+  const fill = [...others].sort((x, y) => y.total_sells - x.total_sells).filter((b) => !seen.has(b.id));
+  return [...matched, ...fill].slice(0, limit);
 }

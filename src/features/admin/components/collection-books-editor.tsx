@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { IconClose } from "@/components/icons";
+import { IconArrowDown, IconArrowUp, IconClose, IconPlus } from "@/components/icons";
 import { setCollectionBooks } from "../actions/collections";
+import { AdminCard } from "./admin-page-head";
 import { Notice } from "./notice";
 
 type Book = { id: string; title: string; book_code: string; status: string };
 
-/** Hand-ordering for a collection: move up, move down, remove, add. */
+/** Pick the books in a collection and set their order. */
 export function CollectionBooksEditor({ collectionId, initial, books }: { collectionId: string; initial: string[]; books: Book[] }) {
   const router = useRouter();
   const [ids, setIds] = useState(initial);
@@ -17,26 +18,24 @@ export function CollectionBooksEditor({ collectionId, initial, books }: { collec
   const [pending, start] = useTransition();
   const byId = new Map(books.map((b) => [b.id, b]));
   const dirty = ids.join() !== initial.join();
-
   const move = (i: number, d: -1 | 1) =>
     setIds((list) => {
-      const next = [...list];
       const j = i + d;
-      if (j < 0 || j >= next.length) return list;
+      if (j < 0 || j >= list.length) return list;
+      const next = [...list];
       [next[i], next[j]] = [next[j]!, next[i]!];
       return next;
     });
 
   return (
-    <section className="border-t-[3px] border-ink pt-5" aria-labelledby="cb-title">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 id="cb-title" className="text-title font-semibold">
-          Books in this collection ({ids.length})
-        </h2>
+    <AdminCard
+      title={`Books (${ids.length})`}
+      actions={
         <button
           type="button"
           className="btn btn-primary btn-sm"
-          disabled={!dirty || pending}
+          disabled={!dirty}
+          data-loading={pending}
           onClick={() =>
             start(async () => {
               const res = await setCollectionBooks(collectionId, ids);
@@ -45,44 +44,16 @@ export function CollectionBooksEditor({ collectionId, initial, books }: { collec
             })
           }
         >
-          {pending ? "Saving…" : dirty ? "Save order" : "Saved"}
+          {dirty ? "Save books" : "Saved"}
         </button>
-      </div>
-      {notice && <Notice tone={notice.tone} className="mt-4">{notice.text}</Notice>}
-
-      <ol className="mt-4 border-t border-ink">
-        {ids.map((id, i) => {
-          const b = byId.get(id);
-          return (
-            <li key={id} className="grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 border-b border-ink py-1.5">
-              <span className="micro text-ink-3 tnum">{i + 1}</span>
-              <span className="min-w-0">
-                <span className="line-clamp-1 font-semibold">{b?.title ?? "Deleted book"}</span>
-                <span className="micro text-ink-3">
-                  {b?.book_code} {b?.status === "draft" && "· draft (hidden)"}
-                </span>
-              </span>
-              <span className="flex">
-                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="inline-flex size-11 items-center justify-center font-mono hover:bg-paper-2 disabled:opacity-30" aria-label="Move up">
-                  ↑
-                </button>
-                <button type="button" onClick={() => move(i, 1)} disabled={i === ids.length - 1} className="inline-flex size-11 items-center justify-center font-mono hover:bg-paper-2 disabled:opacity-30" aria-label="Move down">
-                  ↓
-                </button>
-                <button type="button" onClick={() => setIds((l) => l.filter((x) => x !== id))} className="inline-flex size-11 items-center justify-center text-rust hover:bg-rust-wash" aria-label="Remove from collection">
-                  <IconClose size={16} />
-                </button>
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-
-      <div className="mt-4 flex flex-wrap gap-2">
+      }
+    >
+      {notice && <Notice tone={notice.tone} className="mb-3">{notice.text}</Notice>}
+      <div className="mb-3 flex gap-2">
         <label htmlFor="add-book" className="sr-only">
           Add a book
         </label>
-        <select id="add-book" value={pick} onChange={(e) => setPick(e.target.value)} className="select max-w-md">
+        <select id="add-book" value={pick} onChange={(e) => setPick(e.target.value)} className="select">
           <option value="">Add a book…</option>
           {books
             .filter((b) => !ids.includes(b.id))
@@ -94,16 +65,46 @@ export function CollectionBooksEditor({ collectionId, initial, books }: { collec
         </select>
         <button
           type="button"
-          className="btn btn-outline btn-sm"
+          className="btn btn-secondary shrink-0"
           disabled={!pick}
           onClick={() => {
             setIds((l) => [...l, pick]);
             setPick("");
           }}
         >
-          Add
+          <IconPlus size={16} /> Add
         </button>
       </div>
-    </section>
+      {ids.length === 0 ? (
+        <p className="text-sm text-text-3">No books in this collection.</p>
+      ) : (
+        <ol className="divide-y divide-line rounded-md border border-line">
+          {ids.map((id, i) => {
+            const b = byId.get(id);
+            return (
+              <li key={id} className="flex items-center gap-2 px-2 py-1.5">
+                <span className="w-6 text-center text-sm text-text-3 tnum">{i + 1}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="line-clamp-1 text-base">{b?.title ?? "Deleted book"}</span>
+                  <span className="text-sm text-text-3">
+                    {b?.book_code}
+                    {b?.status === "draft" && " · draft"}
+                  </span>
+                </span>
+                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="btn btn-ghost btn-icon btn-sm" aria-label="Move up">
+                  <IconArrowUp size={16} />
+                </button>
+                <button type="button" onClick={() => move(i, 1)} disabled={i === ids.length - 1} className="btn btn-ghost btn-icon btn-sm" aria-label="Move down">
+                  <IconArrowDown size={16} />
+                </button>
+                <button type="button" onClick={() => setIds((l) => l.filter((x) => x !== id))} className="btn btn-ghost btn-icon btn-sm text-sale hover:text-sale" aria-label="Remove from collection">
+                  <IconClose size={16} />
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </AdminCard>
   );
 }

@@ -31,9 +31,24 @@ export const SIGNED_URL_TTL_SECONDS = 90;
 export const TEXT = {
   titleMax: 160,
   subtitleMax: 200,
-  descriptionMax: 8000,
+  descriptionMax: 40000,
   tocMax: 8000,
   highlightMax: 200,
   highlightsMax: 12,
   tagsMax: 12,
 } as const;
+
+export const MEDIA = {
+  maxBytes: 3 * 1024 * 1024,
+  mimeTypes: ["image/jpeg", "image/png", "image/webp"] as const,
+  extensions: { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" } as const,
+} as const;
+
+/** Banner frames. Images are cropped to these ratios, so the slider never jumps. */
+export const BANNER = {
+  desktop: { width: 1600, height: 500, label: "1600 × 500 (16:5)" },
+  mobile: { width: 900, height: 600, label: "900 × 600 (3:2)" },
+} as const;
+
+/** Preview page thumbnails made in the admin's browser when a preview is uploaded. */
+export const THUMBS = { count: 4, width: 360 } as const;

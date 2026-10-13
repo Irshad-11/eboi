@@ -5,10 +5,10 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: `${SITE.name} PDF books`,
     short_name: SITE.name,
-    description: SITE.description,
+    description: "PDF books. Free preview, order on WhatsApp.",
     start_url: "/",
     display: "browser",
-    background_color: "#f4f0e6",
+    background_color: "#ffffff",
     theme_color: "#0f2a1f",
     icons: [
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml" },

@@ -6,7 +6,7 @@ export const metadata = { title: "Import / export" };
 export default function ImportPage() {
   return (
     <>
-      <AdminPageHead kicker="Books" title="Import and export" />
+      <AdminPageHead title="Import and export" meta="Add or update books from JSON, or download a backup" />
       <ImportPanel />
     </>
   );

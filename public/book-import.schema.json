@@ -1,14 +1,23 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://eboi.vercel.app/book-import.schema.json",
+  "$id": "https://eboi-pdf.vercel.app/book-import.schema.json",
   "title": "eBoi book (import/export format, version 1)",
   "description": "One book as used by Admin > Import / export. Export a book to get a filled-in example. Match order on import: book_code, then slug. A match is updated; otherwise a new book is created. Cover and preview files are uploaded next to the JSON, never referenced by URL.",
   "type": "object",
-  "required": ["slug", "title", "price"],
+  "required": [
+    "slug",
+    "title",
+    "price"
+  ],
   "additionalProperties": false,
   "properties": {
-    "$schema": { "type": "string" },
-    "format_version": { "const": 1, "default": 1 },
+    "$schema": {
+      "type": "string"
+    },
+    "format_version": {
+      "const": 1,
+      "default": 1
+    },
     "book_code": {
       "type": "string",
       "pattern": "^EB-[0-9]{4,}$",
@@ -20,46 +29,276 @@
       "maxLength": 120,
       "description": "Permanent link: /books/<slug>. Changing it later is safe (old links redirect)."
     },
-    "title": { "type": "string", "minLength": 1, "maxLength": 160 },
-    "subtitle": { "type": ["string", "null"], "maxLength": 200 },
-    "author": { "type": "string", "maxLength": 120, "default": "" },
-    "category": { "type": "string", "minLength": 1, "maxLength": 60, "default": "General" },
-    "tags": { "type": "array", "items": { "type": "string", "maxLength": 40 }, "maxItems": 12, "default": [] },
-    "language": { "type": "string", "maxLength": 40, "default": "English" },
-    "page_count": { "type": ["integer", "null"], "minimum": 1, "description": "Pages in the FULL book." },
-    "format": { "type": "string", "maxLength": 30, "default": "PDF" },
-    "file_size": { "type": ["string", "null"], "maxLength": 30, "description": "Size of the FULL pdf, e.g. \"8.4 MB\". Display only." },
-    "description": { "type": "string", "maxLength": 8000, "default": "", "description": "Plain text. A blank line starts a new paragraph." },
-    "highlights": { "type": "array", "items": { "type": "string", "maxLength": 200 }, "maxItems": 12, "default": [], "description": "\"What you get\" bullets." },
-    "table_of_contents": { "type": "string", "maxLength": 8000, "default": "", "description": "One line per chapter." },
-    "price": { "type": "number", "minimum": 0, "description": "List price in Taka." },
-    "old_price": { "type": ["number", "null"], "minimum": 0, "description": "Optional manual struck-through price. Must be higher than price." },
-    "offer_id": { "type": ["string", "null"], "format": "uuid", "description": "Optional pinned offer. Usually null: offers target books from the Offers page." },
-    "rating": { "type": "number", "minimum": 0, "maximum": 5, "default": 0, "description": "Public display value." },
-    "rating_count": { "type": "integer", "minimum": 0, "default": 0 },
-    "total_sells": { "type": "integer", "minimum": 0, "default": 0, "description": "Public display value. Logging a sale adds 1 automatically." },
-    "views": { "type": "integer", "minimum": 0, "default": 0, "description": "Public display value. Real visits add to it automatically." },
-    "release_date": { "type": ["string", "null"], "format": "date" },
-    "is_featured": { "type": "boolean", "default": false },
-    "status": { "enum": ["draft", "published"], "default": "draft" },
-    "badge": { "enum": ["none", "new", "bestseller"], "default": "none" },
-    "seo_title": { "type": ["string", "null"], "maxLength": 70 },
-    "seo_description": { "type": ["string", "null"], "maxLength": 170 },
-    "internal_file_note": { "type": ["string", "null"], "maxLength": 300, "description": "Private. Where the full PDF lives on your computer. Never shown on the site." },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "subtitle": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 200
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 120,
+      "default": ""
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60,
+      "default": "General"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 40
+      },
+      "maxItems": 12,
+      "default": []
+    },
+    "language": {
+      "type": "string",
+      "maxLength": 40,
+      "default": "English"
+    },
+    "page_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "description": "Pages in the FULL book."
+    },
+    "format": {
+      "type": "string",
+      "maxLength": 30,
+      "default": "PDF"
+    },
+    "file_size": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 30,
+      "description": "Size of the FULL pdf, e.g. \"8.4 MB\". Display only."
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 40000,
+      "default": "",
+      "description": "HTML (bold, italic, links, lists, tables) or plain text. It is cleaned on save."
+    },
+    "highlights": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 200
+      },
+      "maxItems": 12,
+      "default": [],
+      "description": "\"What you get\" bullets."
+    },
+    "table_of_contents": {
+      "type": "string",
+      "maxLength": 8000,
+      "default": "",
+      "description": "One line per chapter."
+    },
+    "price": {
+      "type": "number",
+      "minimum": 0,
+      "description": "List price in Taka."
+    },
+    "old_price": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Optional manual struck-through price. Must be higher than price."
+    },
+    "offer_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "description": "Optional pinned offer. Usually null: offers target books from the Offers page."
+    },
+    "rating": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5,
+      "default": 0,
+      "description": "Public display value."
+    },
+    "rating_count": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "total_sells": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Public display value. Logging a sale adds 1 automatically."
+    },
+    "views": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Public display value. Real visits add to it automatically."
+    },
+    "release_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "is_featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "published"
+      ],
+      "default": "draft"
+    },
+    "badge": {
+      "enum": [
+        "none",
+        "new",
+        "bestseller"
+      ],
+      "default": "none"
+    },
+    "seo_title": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 70
+    },
+    "seo_description": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 200
+    },
+    "focus_keyword": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 60,
+      "description": "The main search phrase for this book."
+    },
+    "seo_keywords": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 60
+      },
+      "maxItems": 20,
+      "description": "Extra keywords for the meta keywords tag."
+    },
+    "canonical_url": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 300,
+      "description": "A path like /books/x or a full https:// URL. Empty = this book's own URL."
+    },
+    "noindex": {
+      "type": "boolean",
+      "default": false,
+      "description": "Hide this book from search engines."
+    },
+    "cover_alt": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 200,
+      "description": "Alt text for the cover image."
+    },
+    "internal_file_note": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 300,
+      "description": "Private. Where the full PDF lives on your computer. Never shown on the site."
+    },
     "collections": {
       "type": "array",
-      "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      },
       "maxItems": 20,
       "default": [],
       "description": "Collection slugs. Replaces the book's collections. Unknown slugs are skipped and reported."
+    },
+    "reviews": {
+      "type": "array",
+      "maxItems": 50,
+      "description": "Customer reviews shown on the book page. Leave out to keep existing reviews.",
+      "items": {
+        "type": "object",
+        "required": [
+          "author_name",
+          "rating",
+          "review_date"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "author_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 1500
+          },
+          "review_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "is_visible": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
     },
     "files": {
       "type": "object",
       "additionalProperties": false,
       "description": "Informational only: the file names you intend to upload with this JSON. The importer warns if the chosen files have different names.",
       "properties": {
-        "cover": { "type": "string" },
-        "preview": { "type": "string" }
+        "cover": {
+          "type": "string"
+        },
+        "preview": {
+          "type": "string"
+        }
       }
     }
   }

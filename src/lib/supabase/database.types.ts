@@ -52,6 +52,13 @@ export type BookRow = Timestamps & {
   preview_page_count: number | null;
   internal_file_note: string | null;
   is_demo: boolean;
+  cover_alt: string | null;
+  focus_keyword: string | null;
+  seo_keywords: string[];
+  canonical_url: string | null;
+  noindex: boolean;
+  og_image_path: string | null;
+  preview_thumbs: string[];
 };
 
 export type OfferRow = Timestamps & {
@@ -78,6 +85,81 @@ export type CollectionRow = Timestamps & {
   sort_order: number;
   show_on_home: boolean;
   is_demo: boolean;
+  image_path: string | null;
+  show_in_nav: boolean;
+  seo_title: string | null;
+  seo_description: string | null;
+  focus_keyword: string | null;
+  seo_keywords: string[];
+  canonical_url: string | null;
+  noindex: boolean;
+  og_image_path: string | null;
+};
+
+export type CategoryRow = Timestamps & {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string;
+  image_path: string | null;
+  sort_order: number;
+  show_in_nav: boolean;
+  show_on_home: boolean;
+  is_demo: boolean;
+};
+
+export type BannerRow = Timestamps & {
+  id: string;
+  title: string;
+  subtitle: string;
+  button_label: string;
+  link_url: string;
+  alt_text: string;
+  bg_color: string;
+  text_color: string;
+  image_desktop_path: string | null;
+  image_mobile_path: string | null;
+  sort_order: number;
+  is_active: boolean;
+  start_at: string | null;
+  end_at: string | null;
+  is_demo: boolean;
+};
+
+export type BookReviewRow = {
+  id: string;
+  book_id: string;
+  author_name: string;
+  rating: number;
+  body: string;
+  review_date: string;
+  sort_order: number;
+  is_visible: boolean;
+  is_demo: boolean;
+  created_at: string;
+};
+
+export type PageKey = "home" | "shop" | "about" | "how-to-order" | "faq" | "terms";
+
+export type PageSeoRow = {
+  page_key: PageKey;
+  seo_title: string | null;
+  seo_description: string | null;
+  focus_keyword: string | null;
+  seo_keywords: string[];
+  canonical_url: string | null;
+  noindex: boolean;
+  og_image_path: string | null;
+  updated_at: string;
+};
+
+export type RedirectRow = {
+  id: string;
+  source_path: string;
+  destination: string;
+  status_code: 301 | 302;
+  is_active: boolean;
+  created_at: string;
 };
 
 export type SalesLogRow = {
@@ -127,6 +209,21 @@ export type SiteSettingsRow = {
   how_to_buy_steps: Json;
   social_links: Json;
   updated_at: string;
+  announcement_link: string;
+  announcement_dismissible: boolean;
+  response_time: string;
+  payment_methods: Json;
+  header_links: Json;
+  footer_columns: Json;
+  home_sections: Json;
+  how_to_order_content: string;
+  title_template: string;
+  default_meta_description: string;
+  default_keywords: string[];
+  default_og_image_path: string | null;
+  site_noindex: boolean;
+  google_verification: string;
+  bing_verification: string;
 };
 
 /** Makes columns with database defaults optional for inserts. */
@@ -279,6 +376,23 @@ export type Database = {
         ]
       >;
       site_settings: Table<SiteSettingsRow, Partial<SiteSettingsRow>>;
+      categories: Table<CategoryRow, InsertOf<CategoryRow, "name" | "slug">>;
+      banners: Table<BannerRow, Partial<BannerRow>>;
+      book_reviews: Table<
+        BookReviewRow,
+        InsertOf<BookReviewRow, "book_id" | "author_name">,
+        [
+          {
+            foreignKeyName: "book_reviews_book_id_fkey";
+            columns: ["book_id"];
+            isOneToOne: false;
+            referencedRelation: "books";
+            referencedColumns: ["id"];
+          },
+        ]
+      >;
+      page_seo: Table<PageSeoRow, InsertOf<PageSeoRow, "page_key">>;
+      redirects: Table<RedirectRow, InsertOf<RedirectRow, "source_path" | "destination">>;
     };
     Views: {
       sales_by_month: {

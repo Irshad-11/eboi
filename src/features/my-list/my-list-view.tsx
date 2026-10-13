@@ -1,48 +1,47 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useState } from "react";
 import { SECTIONS } from "@/config/analytics";
 import { publicEnv } from "@/lib/env";
 import { formatPrice } from "@/lib/format";
-import { IconChat, IconClose } from "@/components/icons";
+import { IconClose, IconHeart, IconWhatsApp } from "@/components/icons";
 import { track } from "@/features/analytics/client";
 import { useShop } from "@/features/layout/shop-context";
-import { PriceTag } from "@/features/books/components/price-tag";
+import { CompactCard } from "@/features/books/components/compact-card";
 import type { BookLite } from "@/features/books/types";
 import { buildListMessage } from "@/features/whatsapp/message";
-import { WhatsAppSheet } from "@/features/whatsapp/whatsapp-sheet";
+import { OrderDialog } from "@/features/whatsapp/order-dialog";
 import { removeFromList, useMyList } from "./store";
 import { useBooksByIds } from "./use-books";
 
-/**
- * My List: a shortlist, not a cart. No quantities, no checkout. The point is
- * one WhatsApp message for several books.
- */
+/** My List: saved books, sent together in one WhatsApp message. Not a cart. */
 export function MyListView() {
   const ids = useMyList();
   const { books, loading } = useBooksByIds(ids);
 
   if (!ids.length) {
     return (
-      <div className="max-w-xl border-t-[3px] border-ink pt-8">
-        <p className="text-headline font-semibold">Nothing here yet.</p>
-        <p className="mt-3 text-lead text-ink-2">
-          Tap “Add to My List” on any book to keep it here. Then send the whole list in one WhatsApp message. The list lives
-          in this browser only.
-        </p>
-        <Link href="/shop" className="btn btn-primary mt-8">
-          Find a book
+      <div className="flex flex-col items-center rounded-lg border border-line bg-white px-6 py-12 text-center">
+        <span className="inline-flex size-12 items-center justify-center rounded-full bg-sale-soft text-sale">
+          <IconHeart size={22} />
+        </span>
+        <p className="mt-3 text-md font-semibold">Your list is empty</p>
+        <Link href="/shop" className="btn btn-primary mt-4">
+          Browse books
         </Link>
       </div>
     );
   }
-
   if (loading && !books.length) {
-    return <p className="label border-t-[3px] border-ink pt-6 text-ink-3">Loading your list…</p>;
+    return (
+      <div className="space-y-3" aria-busy="true">
+        {ids.slice(0, 3).map((id) => (
+          <div key={id} className="skeleton h-24 rounded-lg" />
+        ))}
+      </div>
+    );
   }
-
   return <ListWithSend books={books} removable />;
 }
 
@@ -54,66 +53,61 @@ export function ListWithSend({ books, removable = false }: { books: BookLite[]; 
   const message = buildListMessage(shop.whatsapp_list_template, books, shop.currency_symbol, publicEnv.siteUrl);
 
   return (
-    <div className="grid gap-10 lg:grid-cols-12">
-      <ul className="border-t-[3px] border-ink lg:col-span-8" data-section={SECTIONS.myList}>
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      <ul className="divide-y divide-line rounded-lg border border-line bg-white" data-section={SECTIONS.myList}>
         {books.map((b) => (
-          <li key={b.id} className="grid grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-4 border-b border-ink py-4">
-            <Link href={`/books/${b.slug}`} className="book-link" data-book-id={b.id}>
-              <div className="cover">{b.coverUrl && <Image src={b.coverUrl} alt={`Cover of ${b.title}`} fill sizes="64px" />}</div>
-            </Link>
-            <div className="min-w-0">
-              <Link href={`/books/${b.slug}`} className="line-clamp-2 font-semibold hover:underline" data-book-id={b.id}>
-                {b.title}
-              </Link>
-              <p className="micro mt-1 text-ink-3">
-                {b.book_code} · {b.author}
-              </p>
-              <PriceTag pricing={b.pricing} symbol={shop.currency_symbol} size="sm" className="mt-1" />
-            </div>
-            {removable && (
-              <button
-                type="button"
-                onClick={() => removeFromList(b.id)}
-                className="inline-flex size-11 items-center justify-center hover:bg-paper-2"
-                aria-label={`Remove ${b.title} from My List`}
-              >
-                <IconClose size={18} />
-              </button>
-            )}
+          <li key={b.id} className="p-3 sm:p-4">
+            <CompactCard
+              book={b}
+              symbol={shop.currency_symbol}
+              action={
+                removable ? (
+                  <button
+                    type="button"
+                    onClick={() => removeFromList(b.id)}
+                    className="btn btn-ghost btn-icon btn-sm shrink-0"
+                    aria-label={`Remove ${b.title}`}
+                  >
+                    <IconClose size={18} />
+                  </button>
+                ) : undefined
+              }
+            />
           </li>
         ))}
       </ul>
 
-      <aside className="lg:col-span-4">
-        <div className="border-2 border-ink bg-paper-raised p-5 lg:sticky lg:top-6">
-          <p className="label text-ink-3">
-            {books.length} {books.length === 1 ? "book" : "books"}
-          </p>
-          <p className="price mt-2 text-price">{formatPrice(total, shop.currency_symbol)}</p>
-          {before > total && <p className="mt-1 text-small text-ochre-ink">You save {formatPrice(before - total, shop.currency_symbol)} with current offers.</p>}
-          <button
-            type="button"
-            className="btn btn-primary btn-block mt-5"
-            onClick={() => {
-              setOpen(true);
-              books.forEach((b) => track("whatsapp_click", { bookId: b.id, section: SECTIONS.myList }));
-            }}
-          >
-            <IconChat />
-            Send the list on WhatsApp
-          </button>
-          <p className="mt-4 text-small text-ink-3">One message, one reply with the total and how to pay.</p>
-        </div>
+      <aside className="rounded-lg border border-line bg-white p-4 lg:sticky lg:top-24">
+        <dl className="space-y-1.5 text-base">
+          <div className="flex justify-between">
+            <dt className="text-text-3">Books</dt>
+            <dd className="tnum">{books.length}</dd>
+          </div>
+          {before > total && (
+            <div className="flex justify-between">
+              <dt className="text-text-3">Discount</dt>
+              <dd className="text-sale tnum">−{formatPrice(before - total, shop.currency_symbol)}</dd>
+            </div>
+          )}
+          <div className="flex justify-between border-t border-line pt-2 text-md font-semibold">
+            <dt>Total</dt>
+            <dd className="tnum">{formatPrice(total, shop.currency_symbol)}</dd>
+          </div>
+        </dl>
+        <button
+          type="button"
+          className="btn btn-primary btn-block mt-4"
+          onClick={() => {
+            setOpen(true);
+            books.forEach((b) => track("whatsapp_click", { bookId: b.id, section: SECTIONS.myList }));
+          }}
+        >
+          <IconWhatsApp size={18} />
+          Order all on WhatsApp
+        </button>
       </aside>
 
-      <WhatsAppSheet
-        open={open}
-        onClose={() => setOpen(false)}
-        message={message}
-        bookIds={books.map((b) => b.id)}
-        section={SECTIONS.myList}
-        title="Your list is ready to send"
-      />
+      <OrderDialog open={open} onClose={() => setOpen(false)} message={message} bookIds={books.map((b) => b.id)} section={SECTIONS.myList} title="Order your list" />
     </div>
   );
 }

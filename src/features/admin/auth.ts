@@ -4,20 +4,25 @@ import { redirect } from "next/navigation";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createSessionClient } from "@/lib/supabase/server";
 
-/**
- * The single source of truth for "is this request from the admin?".
- * getUser() validates the session with Supabase Auth (getSession() would
- * only trust the cookie), then admin_users decides. RLS repeats the same
- * check in the database, so a bug here still cannot leak or change data.
- */
-export const getAdminUser = cache(async () => {
+/** The signed-in Supabase user (admin or not), validated with Supabase Auth. */
+export const getSessionUser = cache(async () => {
   if (!isSupabaseConfigured) return null;
   const supabase = await createSessionClient();
   const { data } = await supabase.auth.getUser();
-  const user = data.user;
+  return data.user ? { id: data.user.id, email: data.user.email ?? "" } : null;
+});
+
+/**
+ * The single source of truth for "is this request from the admin?".
+ * RLS repeats the same check in the database (is_admin()), so a bug here
+ * still cannot leak or change data.
+ */
+export const getAdminUser = cache(async () => {
+  const user = await getSessionUser();
   if (!user) return null;
+  const supabase = await createSessionClient();
   const { data: row } = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
-  return row ? { id: user.id, email: user.email ?? "" } : null;
+  return row ? user : null;
 });
 
 /** For admin pages: bounce to the login screen. */

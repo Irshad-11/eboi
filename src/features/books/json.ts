@@ -1,4 +1,4 @@
-import type { BookRow } from "@/lib/supabase/database.types";
+import type { BookReviewRow, BookRow } from "@/lib/supabase/database.types";
 
 export const BOOK_JSON_SCHEMA_URL = "/book-import.schema.json";
 
@@ -7,7 +7,7 @@ export const BOOK_JSON_SCHEMA_URL = "/book-import.schema.json";
  * gives back the same book: the round trip is lossless for every field the
  * admin can edit. Files are referenced by name only; they travel separately.
  */
-export function toBookJson(book: BookRow, collectionSlugs: string[], siteUrl: string) {
+export function toBookJson(book: BookRow, collectionSlugs: string[], siteUrl: string, reviews: BookReviewRow[] = []) {
   return {
     $schema: `${siteUrl}${BOOK_JSON_SCHEMA_URL}`,
     format_version: 1 as const,
@@ -38,8 +38,14 @@ export function toBookJson(book: BookRow, collectionSlugs: string[], siteUrl: st
     badge: book.badge,
     seo_title: book.seo_title,
     seo_description: book.seo_description,
+    focus_keyword: book.focus_keyword,
+    seo_keywords: book.seo_keywords,
+    canonical_url: book.canonical_url,
+    noindex: book.noindex,
+    cover_alt: book.cover_alt,
     internal_file_note: book.internal_file_note,
     collections: collectionSlugs,
+    reviews: reviews.map((r) => ({ author_name: r.author_name, rating: r.rating, body: r.body, review_date: r.review_date, is_visible: r.is_visible })),
     files: {
       cover: book.cover_path ? `${book.slug}-cover.${book.cover_path.split(".").pop()}` : undefined,
       preview: book.preview_path ? `${book.slug}-preview.pdf` : undefined,

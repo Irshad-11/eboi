@@ -21,7 +21,7 @@ export function SaleForm({ books }: { books: Book[] }) {
   return (
     <form
       ref={formRef}
-      className="grid gap-4 border-2 border-ink bg-paper-raised p-5 md:grid-cols-[minmax(0,2fr)_8rem_10rem_minmax(0,1fr)_auto] md:items-end"
+      className="grid gap-4 md:grid-cols-[minmax(0,2fr)_8rem_10rem_minmax(0,1fr)_auto] md:items-end"
       onSubmit={(e) => {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
@@ -67,18 +67,18 @@ export function SaleForm({ books }: { books: Book[] }) {
         </select>
       </Field>
       <Field label="Price paid" htmlFor="s-price" error={errors.price}>
-        <input id="s-price" type="number" min={0} inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="input input-mono" />
+        <input id="s-price" type="number" min={0} inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="input tnum" />
       </Field>
       <Field label="Date" htmlFor="s-date" error={errors.soldOn}>
-        <input id="s-date" name="soldOn" type="date" defaultValue={todayInDhaka()} className="input input-mono" />
+        <input id="s-date" name="soldOn" type="date" defaultValue={todayInDhaka()} className="input tnum" />
       </Field>
       <Field label="Note" htmlFor="s-note">
         <input id="s-note" name="note" className="input" placeholder="bKash, repeat buyer…" />
       </Field>
-      <button className="btn btn-primary" disabled={pending}>
-        {pending ? "Logging…" : "Log sale"}
+      <button className="btn btn-primary" data-loading={pending} disabled={pending}>
+        Log sale
       </button>
-      {notice && <Notice tone={notice.tone} className="md:col-span-5">{notice.text}</Notice>}
+      {notice && <Notice tone={notice.tone} className="md:col-span-5 md:order-first">{notice.text}</Notice>}
     </form>
   );
 }

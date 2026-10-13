@@ -2,14 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Sheet } from "@/components/ui/sheet";
+import { Dialog } from "@/components/ui/dialog";
 import { deleteDemoData, loadDemoData } from "../actions/tools";
 import { Notice } from "./notice";
 
-/**
- * Load / delete demo data. The result notice lives here, above the button
- * swap, so it stays visible after the page refreshes into the other state.
- */
+/** Load or delete demo data. The result stays visible after the page refreshes. */
 export function DemoControls({ loaded }: { loaded: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -28,30 +25,35 @@ export function DemoControls({ loaded }: { loaded: boolean }) {
   return (
     <div className="mt-4 space-y-3">
       {loaded ? (
-        <button type="button" className="btn btn-danger" disabled={pending} onClick={() => setConfirm(true)}>
-          {pending ? "Deleting demo data…" : "Delete all demo data"}
+        <button type="button" className="btn btn-danger" data-loading={pending} disabled={pending} onClick={() => setConfirm(true)}>
+          Delete all demo data
         </button>
       ) : (
-        <button type="button" className="btn btn-primary" disabled={pending} onClick={() => run(loadDemoData)}>
-          {pending ? "Generating covers and previews…" : "Load demo data"}
+        <button type="button" className="btn btn-primary" data-loading={pending} disabled={pending} onClick={() => run(loadDemoData)}>
+          Load demo data
         </button>
       )}
-      {pending && <p className="micro text-ink-3">This takes 10 to 30 seconds. Keep this tab open.</p>}
+      {pending && <p className="text-sm text-text-3">This takes 10 to 30 seconds.</p>}
       {result && <Notice tone={result.tone}>{result.text}</Notice>}
-      <Sheet open={confirm} onClose={() => setConfirm(false)} title="Delete all demo data?" kicker="Please confirm">
-        <p className="text-ink-2">
-          Removes every demo book, collection, offer, sale and analytics event, and deletes the demo covers and previews from storage. Your own books
-          are not touched.
+      <Dialog
+        open={confirm}
+        onClose={() => setConfirm(false)}
+        title="Delete all demo data?"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn btn-secondary" onClick={() => setConfirm(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-danger-solid" onClick={() => run(deleteDemoData)}>
+              Delete demo data
+            </button>
+          </div>
+        }
+      >
+        <p className="text-base text-text-2">
+          Removes every demo book, category, collection, offer, banner, review, sale and analytics event, and deletes their files from storage. Your own data is not touched.
         </p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <button type="button" className="btn btn-outline" onClick={() => setConfirm(false)}>
-            Cancel
-          </button>
-          <button type="button" className="btn btn-danger" onClick={() => run(deleteDemoData)}>
-            Delete demo data
-          </button>
-        </div>
-      </Sheet>
+      </Dialog>
     </div>
   );
 }

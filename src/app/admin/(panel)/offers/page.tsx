@@ -5,51 +5,69 @@ import { deleteOffer } from "@/features/admin/actions/offers";
 import { offerStatus } from "@/features/offers/schema";
 import { AdminPageHead } from "@/features/admin/components/admin-page-head";
 import { DeleteButton } from "@/features/admin/components/delete-button";
-import { IconPlus } from "@/components/icons";
+import { IconEdit, IconPlus } from "@/components/icons";
 
 export const metadata = { title: "Offers" };
 
-const STATUS_STYLE = { live: "badge-live", scheduled: "badge-offer", ended: "badge-draft", off: "badge-draft" } as const;
+const STATUS = {
+  live: { label: "Live", cls: "badge-ok" },
+  scheduled: { label: "Scheduled", cls: "badge-warn" },
+  ended: { label: "Ended", cls: "badge-soft" },
+  off: { label: "Off", cls: "badge-soft" },
+} as const;
 
 export default async function OffersAdminPage() {
   const offers = await adminListOffers();
   return (
     <>
       <AdminPageHead
-        kicker={`${offers.filter((o) => offerStatus(o) === "live").length} live`}
         title="Offers"
+        meta={`${offers.filter((o) => offerStatus(o) === "live").length} live`}
         actions={
-          <Link href="/admin/offers/new" className="btn btn-primary btn-sm">
-            <IconPlus size={18} /> New offer
+          <Link href="/admin/offers/new" className="btn btn-primary">
+            <IconPlus size={18} /> Add offer
           </Link>
         }
       />
-      {offers.length === 0 && <p className="text-ink-2">No offers yet.</p>}
-      <ul className="border-t-[3px] border-ink">
-        {offers.map((o) => {
-          const st = offerStatus(o);
-          const target = o.applies_to === "all" ? "every book" : o.applies_to === "books" ? `${o.bookIds.length} books` : `${o.collectionIds.length} collections`;
-          return (
-            <li key={o.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-ink py-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link href={`/admin/offers/${o.id}`} className="font-semibold hover:underline">
-                    {o.title}
+      <div className="rounded-lg border border-line bg-white">
+        {offers.length === 0 ? (
+          <div className="p-6 text-center">
+            <Link href="/admin/offers/new" className="btn btn-primary">
+              Add offer
+            </Link>
+          </div>
+        ) : (
+          <ul className="divide-y divide-line">
+            {offers.map((o) => {
+              const st = STATUS[offerStatus(o)];
+              const target = o.applies_to === "all" ? "Every book" : o.applies_to === "books" ? `${o.bookIds.length} books` : `${o.collectionIds.length} collections`;
+              return (
+                <li key={o.id} className="flex items-center gap-3 px-3 py-3 md:px-4">
+                  <span className="badge badge-sale shrink-0">{o.discount_type === "percent" ? `${Number(o.value)}% off` : `${formatPrice(Number(o.value))} off`}</span>
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/admin/offers/${o.id}`} className="text-base font-semibold hover:text-brand">
+                      {o.title}
+                    </Link>
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-3">
+                      <span className={`badge ${st.cls}`}>{st.label}</span>
+                      <span>{target}</span>
+                      <span>
+                        {formatDate(o.start_at)}
+                        {o.end_at ? ` – ${formatDate(o.end_at)}` : ""}
+                      </span>
+                      {o.is_demo && <span className="badge badge-soft">Demo</span>}
+                    </p>
+                  </div>
+                  <Link href={`/admin/offers/${o.id}`} className="btn btn-ghost btn-icon btn-sm" aria-label={`Edit ${o.title}`} title="Edit">
+                    <IconEdit size={16} />
                   </Link>
-                  <span className={`badge ${STATUS_STYLE[st]}`}>{st}</span>
-                  {o.is_demo && <span className="badge badge-demo">demo</span>}
-                </div>
-                <p className="micro mt-1 text-ink-3">
-                  {o.discount_type === "percent" ? `${o.value}% off` : `${formatPrice(o.value)} off`} · {target} · {formatDate(o.start_at)}
-                  {o.end_at ? ` to ${formatDate(o.end_at)}` : ", no end"}
-                  {o.show_countdown ? " · countdown" : ""}
-                </p>
-              </div>
-              <DeleteButton compact label={`“${o.title}”`} consequence="Prices go back to normal on the site within a few minutes." action={deleteOffer.bind(null, o.id)} />
-            </li>
-          );
-        })}
-      </ul>
+                  <DeleteButton compact label={`“${o.title}”`} consequence="Prices go back to normal on the site within a few minutes." action={deleteOffer.bind(null, o.id)} />
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </>
   );
 }

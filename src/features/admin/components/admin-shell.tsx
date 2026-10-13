@@ -2,96 +2,136 @@
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Wordmark } from "@/components/wordmark";
-import { IconMenu, IconExternal } from "@/components/icons";
-import { Sheet } from "@/components/ui/sheet";
-import { getBrowserClient } from "@/lib/supabase/browser";
+import {
+  IconBookOpen,
+  IconChart,
+  IconDashboard,
+  IconDatabase,
+  IconExternal,
+  IconFile,
+  IconImage,
+  IconLayers,
+  IconLayout,
+  IconLink,
+  IconLogout,
+  IconMenu,
+  IconPercent,
+  IconReceipt,
+  IconSearch,
+  IconSettings,
+  IconTag,
+  IconUpload,
+} from "@/components/icons";
+import { Drawer } from "@/components/ui/drawer";
+import { signOut } from "../actions/auth";
 import { ADMIN_NAV } from "../nav";
 
-/**
- * Admin frame. Same tokens as the shop (paper, ink, rules), denser type.
- * Desktop: a ruled sidebar. Phone: a top bar and the nav in a bottom sheet.
- */
+const ICONS = {
+  dashboard: IconDashboard,
+  book: IconBookOpen,
+  tag: IconTag,
+  layers: IconLayers,
+  percent: IconPercent,
+  upload: IconUpload,
+  image: IconImage,
+  layout: IconLayout,
+  link: IconLink,
+  file: IconFile,
+  receipt: IconReceipt,
+  search: IconSearch,
+  settings: IconSettings,
+  chart: IconChart,
+  database: IconDatabase,
+} as const;
+
+/** Admin frame: sidebar on desktop, top bar with a drawer on phones. */
 export function AdminShell({ email, children }: { email: string; children: ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [lastPath, setLastPath] = useState(pathname);
   if (pathname !== lastPath) {
     setLastPath(pathname);
     setOpen(false);
   }
-
   const isActive = (href: string, exact?: boolean) => (exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
 
-  async function signOut() {
-    await getBrowserClient().auth.signOut();
-    router.replace("/admin/login");
-    router.refresh();
-  }
-
   const nav = (
-    <nav aria-label="Admin">
-      <ul>
-        {ADMIN_NAV.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              aria-current={isActive(item.href, "exact" in item && item.exact) ? "page" : undefined}
-              className={cn(
-                "flex min-h-11 items-center border-l-4 px-3 font-semibold",
-                isActive(item.href, "exact" in item && item.exact) ? "border-green-900 bg-paper-2" : "border-transparent hover:bg-paper-2",
-              )}
-            >
-              {item.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
+    <nav aria-label="Admin" className="space-y-4">
+      {ADMIN_NAV.map((g) => (
+        <div key={g.group || "main"}>
+          {g.group && <p className="px-3 pb-1 text-xs font-semibold text-text-3">{g.group}</p>}
+          <ul className="space-y-0.5">
+            {g.items.map((item) => {
+              const Icon = ICONS[item.icon];
+              const active = isActive(item.href, "exact" in item && item.exact);
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex min-h-10 items-center gap-2.5 rounded-md px-3 text-base",
+                      active ? "bg-brand-soft font-semibold text-brand" : "text-text-2 hover:bg-muted hover:text-text",
+                    )}
+                  >
+                    <Icon size={18} />
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </nav>
   );
 
-  const footer = (
-    <div className="space-y-2 border-t border-ink pt-4">
-      <Link href="/" target="_blank" className="flex min-h-11 items-center gap-2 px-3 text-small hover:bg-paper-2">
-        <IconExternal size={16} /> View the shop
+  const account = (
+    <div className="space-y-1 border-t border-line pt-3">
+      <Link href="/" target="_blank" className="flex min-h-10 items-center gap-2.5 rounded-md px-3 text-base text-text-2 hover:bg-muted">
+        <IconExternal size={18} /> View store
       </Link>
-      <p className="micro truncate px-3 text-ink-3">{email}</p>
-      <button type="button" onClick={signOut} className="btn btn-quiet btn-sm px-3">
-        Sign out
-      </button>
+      <form action={signOut}>
+        <button className="flex min-h-10 w-full items-center gap-2.5 rounded-md px-3 text-base text-text-2 hover:bg-muted">
+          <IconLogout size={18} /> Sign out
+        </button>
+      </form>
+      <p className="truncate px-3 pt-1 text-xs text-text-3">{email}</p>
     </div>
   );
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
-      <aside className="hidden border-r-[3px] border-ink lg:flex lg:flex-col lg:gap-6 lg:p-5">
-        <Link href="/admin" className="block">
-          <Wordmark className="w-28 text-green-900" />
-          <span className="micro mt-2 block text-ink-3">Admin</span>
+    <div className="min-h-dvh bg-page lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+      <aside className="sticky top-0 hidden h-dvh flex-col gap-5 overflow-y-auto border-r border-line bg-white p-4 lg:flex">
+        <Link href="/admin" className="flex items-baseline gap-2 px-3 pt-1">
+          <Wordmark className="h-6 w-auto text-brand-ink" />
+          <span className="text-sm text-text-3">Admin</span>
         </Link>
         <div className="flex-1">{nav}</div>
-        {footer}
+        {account}
       </aside>
 
-      <header className="flex h-14 items-center justify-between border-b-[3px] border-ink px-4 lg:hidden">
-        <Link href="/admin" className="flex items-baseline gap-2">
-          <Wordmark className="h-6 w-auto text-green-900" />
-          <span className="micro text-ink-3">Admin</span>
-        </Link>
-        <button type="button" onClick={() => setOpen(true)} className="inline-flex size-11 items-center justify-center" aria-label="Open admin menu">
-          <IconMenu />
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-white px-3 lg:hidden">
+        <button type="button" onClick={() => setOpen(true)} className="btn btn-ghost btn-icon" aria-label="Open admin menu">
+          <IconMenu size={22} />
         </button>
+        <Link href="/admin" className="flex items-baseline gap-2">
+          <Wordmark className="h-5 w-auto text-brand-ink" />
+          <span className="text-sm text-text-3">Admin</span>
+        </Link>
       </header>
-      <Sheet open={open} onClose={() => setOpen(false)} title="Admin" kicker="eBoi">
-        {nav}
-        <div className="mt-4">{footer}</div>
-      </Sheet>
+      <Drawer open={open} onClose={() => setOpen(false)} title="Admin">
+        <div className="space-y-4 p-3">
+          {nav}
+          {account}
+        </div>
+      </Drawer>
 
-      <main id="main" className="min-w-0 px-4 py-6 md:px-8 md:py-8">
-        {children}
+      <main id="main" className="min-w-0 px-4 py-5 md:px-8 md:py-7">
+        <div className="mx-auto max-w-6xl">{children}</div>
       </main>
     </div>
   );

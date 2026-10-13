@@ -17,7 +17,7 @@ export const getCollections = cache(async (): Promise<CollectionWithBooks[]> => 
     createPublicClient()
       .from("collections")
       .select(
-        "id, name, slug, description, editorial_intro, mood, sort_order, show_on_home, is_demo, collection_books(book_id, position)",
+        "id, name, slug, description, editorial_intro, mood, sort_order, show_on_home, is_demo, image_path, show_in_nav, seo_title, seo_description, focus_keyword, seo_keywords, canonical_url, noindex, og_image_path, collection_books(book_id, position)",
       )
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true }),

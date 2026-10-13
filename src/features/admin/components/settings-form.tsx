@@ -3,20 +3,20 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { publicEnv } from "@/lib/env";
-import { IconPlus, IconClose } from "@/components/icons";
-import type { SiteSettings, SocialLink } from "@/features/settings/schema";
+import type { PaymentMethod, SiteSettings, Step } from "@/features/settings/schema";
 import { TEMPLATE_TOKENS } from "@/features/settings/schema";
 import { buildListMessage, buildSingleMessage, type MessageBook } from "@/features/whatsapp/message";
 import { saveGeneralSettings } from "../actions/settings";
-import { Field, FieldGroup } from "./field";
+import { AdminCard } from "./admin-page-head";
+import { Field, Toggle } from "./field";
+import { ListEditor } from "./list-editor";
 import { Notice } from "./notice";
 
-/** A made-up sample used only to preview templates in this form. */
 const SAMPLE: MessageBook = {
   title: "Sample Book Title",
   book_code: "EB-0001",
   slug: "sample-book-title",
-  pricing: { base: 250, final: 200, was: 250, offer: { id: "x", title: "Sample offer", banner_text: "", end_at: null, show_countdown: false }, savePercent: 20 },
+  pricing: { base: 250, final: 200, was: 250, offer: { id: "x", title: "Sample offer", banner_text: "", end_at: null, show_countdown: false, discount_type: "percent", value: 20 }, savePercent: 20 },
 };
 
 export function SettingsForm({ settings }: { settings: SiteSettings }) {
@@ -25,11 +25,14 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [pending, start] = useTransition();
-  const set = <K extends keyof SiteSettings>(k: K, v: SiteSettings[K]) => setS((prev) => ({ ...prev, [k]: v }));
+  const set = <K extends keyof SiteSettings>(k: K, v: SiteSettings[K]) => setS((p) => ({ ...p, [k]: v }));
+  const text = (k: keyof SiteSettings, id: string, extra?: React.InputHTMLAttributes<HTMLInputElement>) => (
+    <input id={id} className="input" value={s[k] as string} onChange={(e) => set(k, e.target.value as never)} aria-invalid={Boolean(errors[k]) || undefined} {...extra} />
+  );
 
   return (
     <form
-      className="space-y-10"
+      className="space-y-4 pb-20"
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -37,14 +40,18 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
           const res = await saveGeneralSettings({
             site_name: s.site_name,
             tagline: s.tagline,
+            currency_symbol: s.currency_symbol,
             whatsapp_number: s.whatsapp_number,
             whatsapp_template: s.whatsapp_template,
             whatsapp_list_template: s.whatsapp_list_template,
-            currency_symbol: s.currency_symbol,
-            announcement: s.announcement,
-            announcement_active: s.announcement_active,
+            response_time: s.response_time,
             delivery_note: s.delivery_note,
-            social_links: s.social_links.filter((l) => l.label || l.url),
+            announcement: s.announcement,
+            announcement_link: s.announcement_link,
+            announcement_active: s.announcement_active,
+            announcement_dismissible: s.announcement_dismissible,
+            payment_methods: s.payment_methods,
+            how_to_buy_steps: s.how_to_buy_steps,
           });
           setErrors(res.ok ? {} : (res.fieldErrors ?? {}));
           setNotice(res.ok ? { tone: "ok", text: res.message ?? "Saved." } : { tone: "error", text: res.error });
@@ -54,69 +61,109 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
     >
       {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
 
-      <FieldGroup title="Shop">
-        <Field label="Site name" htmlFor="site_name" error={errors.site_name}>
-          <input id="site_name" className="input" value={s.site_name} onChange={(e) => set("site_name", e.target.value)} />
-        </Field>
-        <Field label="Tagline" htmlFor="tagline" error={errors.tagline}>
-          <input id="tagline" className="input" value={s.tagline} onChange={(e) => set("tagline", e.target.value)} />
-        </Field>
-        <Field label="Currency symbol" htmlFor="currency_symbol" error={errors.currency_symbol}>
-          <input id="currency_symbol" className="input input-mono" value={s.currency_symbol} onChange={(e) => set("currency_symbol", e.target.value)} />
-        </Field>
-        <Field label="Delivery note" htmlFor="delivery_note" hint="Real promise shown under every buy button." error={errors.delivery_note} className="sm:col-span-2">
-          <textarea id="delivery_note" rows={2} className="textarea min-h-0" value={s.delivery_note} onChange={(e) => set("delivery_note", e.target.value)} />
-        </Field>
-      </FieldGroup>
+      <AdminCard title="Store">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Store name" htmlFor="st-name" error={errors.site_name}>
+            {text("site_name", "st-name")}
+          </Field>
+          <Field label="Tagline" htmlFor="st-tagline" hint="Footer and default page title" error={errors.tagline}>
+            {text("tagline", "st-tagline")}
+          </Field>
+          <Field label="Currency symbol" htmlFor="st-currency" error={errors.currency_symbol}>
+            {text("currency_symbol", "st-currency")}
+          </Field>
+        </div>
+      </AdminCard>
 
-      <FieldGroup title="Announcement" description="A thin bar above the header on every page.">
-        <Field label="Text" htmlFor="announcement" error={errors.announcement} className="sm:col-span-2">
-          <input id="announcement" maxLength={160} className="input" value={s.announcement} onChange={(e) => set("announcement", e.target.value)} />
-        </Field>
-        <label className="flex min-h-11 items-center gap-2">
-          <input type="checkbox" className="check" checked={s.announcement_active} onChange={(e) => set("announcement_active", e.target.checked)} />
-          Show the announcement
-        </label>
-      </FieldGroup>
+      <AdminCard title="Announcement bar">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Text" htmlFor="st-ann" error={errors.announcement} className="sm:col-span-2">
+            {text("announcement", "st-ann", { maxLength: 160 })}
+          </Field>
+          <Field label="Link (optional)" htmlFor="st-ann-link" hint="/shop?deals=1 or https://…" error={errors.announcement_link}>
+            {text("announcement_link", "st-ann-link")}
+          </Field>
+          <div className="space-y-1">
+            <Toggle id="st-ann-on" label="Show the bar" checked={s.announcement_active} onChange={(c) => set("announcement_active", c)} />
+            <Toggle id="st-ann-x" label="Visitors can close it" checked={s.announcement_dismissible} onChange={(c) => set("announcement_dismissible", c)} />
+          </div>
+        </div>
+      </AdminCard>
 
-      <FieldGroup
-        title="WhatsApp"
-        description={`Placeholders: ${TEMPLATE_TOKENS.title} ${TEMPLATE_TOKENS.id} ${TEMPLATE_TOKENS.price} ${TEMPLATE_TOKENS.url}. List message: ${TEMPLATE_TOKENS.list} ${TEMPLATE_TOKENS.total} ${TEMPLATE_TOKENS.url}.`}
-      >
-        <Field label="WhatsApp number" htmlFor="whatsapp_number" hint="Digits with country code, e.g. 8801712345678" error={errors.whatsapp_number} className="sm:col-span-2">
-          <input id="whatsapp_number" inputMode="tel" className="input input-mono" value={s.whatsapp_number} onChange={(e) => set("whatsapp_number", e.target.value)} />
-        </Field>
-        <Field label="Message for one book" htmlFor="whatsapp_template" error={errors.whatsapp_template}>
-          <textarea id="whatsapp_template" rows={7} className="textarea font-mono text-[0.9rem]" value={s.whatsapp_template} onChange={(e) => set("whatsapp_template", e.target.value)} />
-        </Field>
-        <Preview text={buildSingleMessage(s.whatsapp_template, SAMPLE, s.currency_symbol, publicEnv.siteUrl)} />
-        <Field label="Message for My List" htmlFor="whatsapp_list_template" error={errors.whatsapp_list_template}>
-          <textarea id="whatsapp_list_template" rows={7} className="textarea font-mono text-[0.9rem]" value={s.whatsapp_list_template} onChange={(e) => set("whatsapp_list_template", e.target.value)} />
-        </Field>
-        <Preview text={buildListMessage(s.whatsapp_list_template, [SAMPLE, { ...SAMPLE, title: "Second Sample", book_code: "EB-0002", pricing: { ...SAMPLE.pricing, final: 300, was: null, offer: null } }], s.currency_symbol, publicEnv.siteUrl)} />
-      </FieldGroup>
+      <AdminCard title="WhatsApp ordering" description={`Placeholders: ${TEMPLATE_TOKENS.title} ${TEMPLATE_TOKENS.id} ${TEMPLATE_TOKENS.price} ${TEMPLATE_TOKENS.url}; for My List: ${TEMPLATE_TOKENS.list} ${TEMPLATE_TOKENS.total} ${TEMPLATE_TOKENS.url}`}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="WhatsApp number" htmlFor="st-wa" hint="With country code, e.g. 8801712345678" error={errors.whatsapp_number}>
+            {text("whatsapp_number", "st-wa", { inputMode: "tel" })}
+          </Field>
+          <Field label="Reply time" htmlFor="st-resp" hint="Used as [Response time], e.g. 10 minutes" error={errors.response_time}>
+            {text("response_time", "st-resp")}
+          </Field>
+          <Field label="Delivery line" htmlFor="st-deliv" hint="Shown on every book page" error={errors.delivery_note} className="sm:col-span-2">
+            {text("delivery_note", "st-deliv")}
+          </Field>
+          <Field label="Message for one book" htmlFor="st-tpl" error={errors.whatsapp_template}>
+            <textarea id="st-tpl" rows={7} className="textarea" value={s.whatsapp_template} onChange={(e) => set("whatsapp_template", e.target.value)} />
+          </Field>
+          <Preview text={buildSingleMessage(s.whatsapp_template, SAMPLE, s.currency_symbol, publicEnv.siteUrl)} />
+          <Field label="Message for My List" htmlFor="st-tpl-list" error={errors.whatsapp_list_template}>
+            <textarea id="st-tpl-list" rows={7} className="textarea" value={s.whatsapp_list_template} onChange={(e) => set("whatsapp_list_template", e.target.value)} />
+          </Field>
+          <Preview
+            text={buildListMessage(
+              s.whatsapp_list_template,
+              [SAMPLE, { ...SAMPLE, title: "Second Sample", book_code: "EB-0002", pricing: { ...SAMPLE.pricing, final: 300, was: null, offer: null } }],
+              s.currency_symbol,
+              publicEnv.siteUrl,
+            )}
+          />
+        </div>
+      </AdminCard>
 
-      <FieldGroup title="Social links" description="Shown in the footer and in the Organization data for Google.">
-        <div className="space-y-3 sm:col-span-2">
-          {s.social_links.map((l, i) => (
-            <div key={i} className="grid grid-cols-[8rem_minmax(0,1fr)_auto] gap-2">
-              <input aria-label="Label" placeholder="Facebook" className="input" value={l.label} onChange={(e) => set("social_links", s.social_links.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
-              <input aria-label="URL" placeholder="https://" className="input input-mono" value={l.url} onChange={(e) => set("social_links", s.social_links.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))} />
-              <button type="button" aria-label="Remove link" className="inline-flex size-12 items-center justify-center hover:bg-paper-2" onClick={() => set("social_links", s.social_links.filter((_, j) => j !== i))}>
-                <IconClose size={18} />
-              </button>
+      <AdminCard title="Order steps" description="Shown on the home page, the How to order page and in the order dialog. [Response time] is replaced by the reply time.">
+        <ListEditor<Step>
+          items={s.how_to_buy_steps}
+          onChange={(v) => set("how_to_buy_steps", v)}
+          blank={() => ({ title: "", body: "" })}
+          addLabel="Add step"
+          max={8}
+          render={(st, upd, i) => (
+            <div className="grid gap-2 sm:grid-cols-[2rem_minmax(0,1fr)]">
+              <span className="inline-flex size-8 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">{i + 1}</span>
+              <div className="space-y-2">
+                <input aria-label={`Step ${i + 1} title`} className="input" value={st.title} onChange={(e) => upd({ title: e.target.value })} />
+                <input aria-label={`Step ${i + 1} text`} className="input" value={st.body} onChange={(e) => upd({ body: e.target.value })} />
+              </div>
             </div>
-          ))}
-          {errors.social_links && <p className="field-error">{errors.social_links}</p>}
-          <button type="button" className="btn btn-outline btn-sm" onClick={() => set("social_links", [...s.social_links, { label: "", url: "" } as SocialLink])}>
-            <IconPlus size={16} /> Add link
+          )}
+        />
+        {errors.how_to_buy_steps && <p className="field-error">{errors.how_to_buy_steps}</p>}
+      </AdminCard>
+
+      <AdminCard title="Payment methods" description="Numbers are shown on the How to order page with a copy button. Labels show in the footer.">
+        <ListEditor<PaymentMethod>
+          items={s.payment_methods}
+          onChange={(v) => set("payment_methods", v)}
+          blank={() => ({ label: "", number: "", note: "" })}
+          addLabel="Add payment method"
+          max={6}
+          render={(m, upd, i) => (
+            <div className="grid gap-2 sm:grid-cols-3">
+              <input aria-label={`Method ${i + 1} name`} placeholder="bKash" className="input" value={m.label} onChange={(e) => upd({ label: e.target.value })} />
+              <input aria-label={`Method ${i + 1} number`} placeholder="01XXXXXXXXX" inputMode="tel" className="input" value={m.number} onChange={(e) => upd({ number: e.target.value })} />
+              <input aria-label={`Method ${i + 1} note`} placeholder="Send Money" className="input" value={m.note} onChange={(e) => upd({ note: e.target.value })} />
+            </div>
+          )}
+        />
+        {errors.payment_methods && <p className="field-error">{errors.payment_methods}</p>}
+      </AdminCard>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white px-4 py-3 lg:left-[15.5rem]">
+        <div className="mx-auto flex max-w-6xl justify-end">
+          <button className="btn btn-primary" data-loading={pending} disabled={pending}>
+            Save settings
           </button>
         </div>
-      </FieldGroup>
-
-      <button className="btn btn-primary" disabled={pending}>
-        {pending ? "Saving…" : "Save settings"}
-      </button>
+      </div>
     </form>
   );
 }
@@ -125,7 +172,7 @@ function Preview({ text }: { text: string }) {
   return (
     <div>
       <p className="field-label">Preview</p>
-      <pre className="border-l-4 border-green-900 bg-paper-raised p-3 font-mono text-[0.85rem] whitespace-pre-wrap">{text}</pre>
+      <pre className="rounded-md bg-muted p-3 font-sans text-sm whitespace-pre-wrap text-text-2">{text}</pre>
     </div>
   );
 }

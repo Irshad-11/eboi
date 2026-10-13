@@ -36,6 +36,7 @@ export const bookInputSchema = z
     page_count: z.coerce.number().int().positive().max(20000).nullish().transform((v) => v ?? null),
     format: z.string().trim().min(1).max(30).default("PDF"),
     file_size: optionalText(30),
+    // HTML from the rich text editor (plain text is accepted too).
     description: z.string().trim().max(TEXT.descriptionMax).default(""),
     highlights: stringList(TEXT.highlightMax, TEXT.highlightsMax).default([]),
     table_of_contents: z.string().trim().max(TEXT.tocMax).default(""),
@@ -51,7 +52,12 @@ export const bookInputSchema = z
     status: z.enum(["draft", "published"]).default("draft"),
     badge: z.enum(["none", "new", "bestseller"]).default("none"),
     seo_title: optionalText(70),
-    seo_description: optionalText(170),
+    seo_description: optionalText(200),
+    focus_keyword: optionalText(60),
+    seo_keywords: stringList(60, 20).default([]),
+    canonical_url: optionalText(300).refine((v) => v === null || v.startsWith("/") || /^https?:\/\/\S+$/i.test(v), "Use a path or a full https:// URL"),
+    noindex: z.boolean().default(false),
+    cover_alt: optionalText(200),
     internal_file_note: optionalText(300),
   })
   .refine((b) => b.old_price == null || b.old_price > b.price, {
@@ -81,6 +87,19 @@ export const bookJsonSchema = z
         cover: z.string().max(200).optional(),
         preview: z.string().max(200).optional(),
       })
+      .optional(),
+    /** Customer reviews. Leave out to keep a book's existing reviews. */
+    reviews: z
+      .array(
+        z.object({
+          author_name: z.string().trim().min(1).max(80),
+          rating: z.coerce.number().int().min(1).max(5),
+          body: z.string().trim().max(1500).default(""),
+          review_date: z.iso.date(),
+          is_visible: z.boolean().default(true),
+        }),
+      )
+      .max(50)
       .optional(),
   })
   .and(bookInputSchema);

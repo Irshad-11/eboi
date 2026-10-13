@@ -52,10 +52,10 @@ export function LineChart({
   const h = hover != null ? points[hover] : null;
 
   return (
-    <figure className="min-w-0 bg-paper p-4">
+    <figure className="min-w-0 rounded-lg border border-line bg-white p-4">
       <figcaption className="flex items-baseline justify-between gap-3">
-        <span className="label text-ink-2">{title}</span>
-        <span className="price text-small">{h ? `${h.label}: ${format(h.value)}` : summary === "average" ? `${format(Math.round(total / Math.max(1, points.length)))} a day` : `${format(total)} total`}</span>
+        <span className="text-sm font-semibold text-text-2">{title}</span>
+        <span className="text-sm font-semibold tnum">{h ? `${h.label}: ${format(h.value)}` : summary === "average" ? `${format(Math.round(total / Math.max(1, points.length)))} a day` : `${format(total)} total`}</span>
       </figcaption>
       <svg
         viewBox={`0 0 ${W} ${H}`}
@@ -69,24 +69,24 @@ export function LineChart({
         <title id={`${id}-t`}>{`${title}, ${format(total)} over ${points.length} days`}</title>
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} stroke="var(--color-paper-3)" strokeWidth={1} />
-            <text x={pad.l - 6} y={y(t) + 4} textAnchor="end" className="fill-ink-3 font-mono text-[10px]">
+            <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} stroke="var(--color-line)" strokeWidth={1} />
+            <text x={pad.l - 6} y={y(t) + 4} textAnchor="end" className="fill-text-3 text-[10px]">
               {t >= 1000 ? `${Math.round(t / 100) / 10}k` : Math.round(t)}
             </text>
           </g>
         ))}
         {points.map((p, i) =>
           i % labelEvery === 0 ? (
-            <text key={p.label} x={x(i)} y={H - 6} textAnchor="middle" className="fill-ink-3 font-mono text-[10px]">
+            <text key={p.label} x={x(i)} y={H - 6} textAnchor="middle" className="fill-text-3 text-[10px]">
               {p.label}
             </text>
           ) : null,
         )}
-        <path d={path} fill="none" stroke="var(--color-green-700)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        <path d={path} fill="none" stroke="var(--color-brand)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         {hover != null && h && (
           <g>
-            <line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={H - pad.b} stroke="var(--color-ink)" strokeWidth={1} strokeDasharray="3 3" />
-            <circle cx={x(hover)} cy={y(h.value)} r={5} fill="var(--color-green-700)" stroke="var(--color-paper)" strokeWidth={2} />
+            <line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={H - pad.b} stroke="var(--color-text-3)" strokeWidth={1} strokeDasharray="3 3" />
+            <circle cx={x(hover)} cy={y(h.value)} r={5} fill="var(--color-brand)" stroke="var(--color-white)" strokeWidth={2} />
           </g>
         )}
       </svg>

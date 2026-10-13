@@ -1,12 +1,12 @@
 import "server-only";
 import { PDFDocument } from "pdf-lib";
-import { COVER, PREVIEW } from "@/config/limits";
+import { COVER, MEDIA, PREVIEW } from "@/config/limits";
 import { BUCKETS, type BucketName } from "@/config/storage";
 import { createServiceClient } from "@/lib/supabase/service";
 
 /**
- * Server-side file checks and deletions. Every upload is re-validated here
- * by reading the actual bytes, not the file name or the browser's MIME type.
+ * Server-side file checks and deletions. Every upload is re-validated by
+ * reading the actual bytes, not the file name or the browser's MIME type.
  */
 
 async function download(bucket: BucketName, path: string): Promise<Uint8Array | null> {
@@ -15,15 +15,24 @@ async function download(bucket: BucketName, path: string): Promise<Uint8Array | 
   return new Uint8Array(await data.arrayBuffer());
 }
 
-const startsWith = (b: Uint8Array, sig: number[]) => sig.every((v, i) => b[i] === v);
+const startsWith = (b: Uint8Array, sig: number[], offset = 0) => sig.every((v, i) => b[i + offset] === v);
+const isJpeg = (b: Uint8Array) => startsWith(b, [0xff, 0xd8, 0xff]);
+const isPng = (b: Uint8Array) => startsWith(b, [0x89, 0x50, 0x4e, 0x47]);
+const isWebp = (b: Uint8Array) => startsWith(b, [0x52, 0x49, 0x46, 0x46]) && startsWith(b, [0x57, 0x45, 0x42, 0x50], 8);
 
 export async function verifyCover(path: string): Promise<string | null> {
   const bytes = await download(BUCKETS.covers, path);
   if (!bytes) return "The cover upload could not be found.";
   if (bytes.byteLength > COVER.maxBytes) return "The cover is larger than 2 MB.";
-  const isJpeg = startsWith(bytes, [0xff, 0xd8, 0xff]);
-  const isPng = startsWith(bytes, [0x89, 0x50, 0x4e, 0x47]);
-  if (!isJpeg && !isPng) return "The cover is not a real JPG or PNG file.";
+  if (!isJpeg(bytes) && !isPng(bytes)) return "The cover is not a real JPG or PNG file.";
+  return null;
+}
+
+export async function verifyMediaImage(path: string): Promise<string | null> {
+  const bytes = await download(BUCKETS.media, path);
+  if (!bytes) return "The image upload could not be found.";
+  if (bytes.byteLength > MEDIA.maxBytes) return "The image is larger than 3 MB.";
+  if (!isJpeg(bytes) && !isPng(bytes) && !isWebp(bytes)) return "The file is not a real JPG, PNG or WebP image.";
   return null;
 }
 
@@ -42,34 +51,39 @@ export async function verifyPreview(path: string): Promise<{ error: string } | {
   }
 }
 
-/** Deletes files, logging (not throwing) on failure: the orphan sweeper catches leftovers. */
+/** Deletes files, logging (not throwing) on failure: the orphan sweep catches leftovers. */
 export async function removeFiles(bucket: BucketName, paths: (string | null | undefined)[]): Promise<void> {
-  const list = paths.filter((p): p is string => Boolean(p));
+  const list = [...new Set(paths.filter((p): p is string => Boolean(p)))];
   if (!list.length) return;
   const { error } = await createServiceClient().storage.from(bucket).remove(list);
   if (error) console.error(`[storage] remove from ${bucket} failed:`, error.message);
 }
 
-/** Every object in a bucket (our layout is one folder level deep: <book id>/<file>). */
+/** Every object in a bucket, walking folders up to three levels deep. */
 export async function listAllObjects(bucket: BucketName): Promise<{ path: string; createdAt: string | null }[]> {
   const storage = createServiceClient().storage.from(bucket);
   const out: { path: string; createdAt: string | null }[] = [];
-  const { data: folders, error } = await storage.list("", { limit: 1000 });
-  if (error) throw new Error(error.message);
-  for (const f of folders ?? []) {
-    // Folders come back with id === null; loose root files have an id.
-    if (f.id) {
-      out.push({ path: f.name, createdAt: f.created_at ?? null });
-      continue;
-    }
+  async function walk(prefix: string, depth: number): Promise<void> {
     let offset = 0;
     for (;;) {
-      const { data: files, error: e2 } = await storage.list(f.name, { limit: 1000, offset });
-      if (e2) throw new Error(e2.message);
-      for (const file of files ?? []) if (file.id) out.push({ path: `${f.name}/${file.name}`, createdAt: file.created_at ?? null });
-      if (!files || files.length < 1000) break;
+      const { data, error } = await storage.list(prefix, { limit: 1000, offset });
+      if (error) throw new Error(error.message);
+      for (const f of data ?? []) {
+        const full = prefix ? `${prefix}/${f.name}` : f.name;
+        if (f.id) out.push({ path: full, createdAt: f.created_at ?? null });
+        else if (depth < 3) await walk(full, depth + 1);
+      }
+      if (!data || data.length < 1000) break;
       offset += 1000;
     }
   }
+  await walk("", 0);
   return out;
+}
+
+/** Validates a new media path for an owner, returning an error message or null. */
+export async function checkNewMedia(path: string | null | undefined, ok: (p: string) => boolean): Promise<string | null> {
+  if (!path) return null;
+  if (!ok(path)) return "That image is not in the right folder.";
+  return verifyMediaImage(path);
 }

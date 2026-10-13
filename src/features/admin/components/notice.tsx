@@ -1,17 +1,15 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
-/** Inline status message. Colour is never the only signal: each has a label. */
+/** Inline status message. */
 export function Notice({ tone = "info", children, className }: { tone?: "info" | "ok" | "error"; children: ReactNode; className?: string }) {
   const styles = {
-    info: "border-ink-3 bg-paper-2",
-    ok: "border-green-700 bg-green-100",
-    error: "border-rust bg-rust-wash",
+    info: "border-line-2 bg-muted text-text-2",
+    ok: "border-brand/25 bg-brand-soft text-brand",
+    error: "border-sale/30 bg-sale-soft text-sale",
   }[tone];
-  const label = { info: "Note", ok: "Done", error: "Problem" }[tone];
   return (
-    <div className={cn("border-l-4 p-4 text-small", styles, className)} role={tone === "error" ? "alert" : "status"}>
-      <span className="label mr-2">{label}</span>
+    <div className={cn("rounded-md border px-3 py-2.5 text-sm break-words", styles, className)} role={tone === "error" ? "alert" : "status"}>
       {children}
     </div>
   );

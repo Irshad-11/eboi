@@ -485,3 +485,111 @@ export const DEMO_SEARCHES = [
   { term: "rich dad poor dad", hits: false },
   { term: "photoshop", hits: false },
 ];
+
+/** Categories with icons. Only names missing from the list are added (and removed again with the demo). */
+export const DEMO_CATEGORIES = [
+  { name: "Business", slug: "business", icon: "business", show_in_nav: true },
+  { name: "Fiction", slug: "fiction", icon: "fiction", show_in_nav: true },
+  { name: "Programming", slug: "programming", icon: "code", show_in_nav: true },
+  { name: "Language", slug: "language", icon: "language", show_in_nav: true },
+  { name: "Design", slug: "design", icon: "design", show_in_nav: true },
+  { name: "Cooking", slug: "cooking", icon: "cooking", show_in_nav: false },
+  { name: "Self-help", slug: "self-help", icon: "selfhelp", show_in_nav: false },
+];
+
+/**
+ * Hero slides. Two are generated images (desktop and phone versions, with
+ * real demo covers on them); the third is a plain text slide, so both kinds
+ * are on show.
+ */
+export type DemoBanner = {
+  key: string;
+  title: string;
+  subtitle: string;
+  button_label: string;
+  link_url: string;
+  alt_text: string;
+  bg_color: string;
+  text_color: string;
+  /** Demo book keys whose covers are drawn on the image. Empty = text slide. */
+  covers: string[];
+};
+
+export const DEMO_BANNERS: DemoBanner[] = [
+  {
+    key: "weekend",
+    title: "Weekend reads, 20% off",
+    subtitle: "Novels and short stories you can finish by Saturday night.",
+    button_label: "Shop the offer",
+    link_url: "/collections/weekend-reads",
+    alt_text: "Weekend reads, 20% off novels and short stories",
+    bg_color: "#1d5c42",
+    text_color: "#ffffff",
+    covers: ["nodir", "monsoon", "kitchen"],
+  },
+  {
+    key: "skill",
+    title: "Learn a skill this month",
+    subtitle: "Handbooks with exercises: SQL, IELTS writing and typography.",
+    button_label: "See the books",
+    link_url: "/collections/learn-a-skill",
+    alt_text: "Learn a skill this month: SQL, IELTS writing and typography handbooks",
+    bg_color: "#f3efe4",
+    text_color: "#18211d",
+    covers: ["sql", "ielts", "type"],
+  },
+  {
+    key: "preview",
+    title: "Read the first pages free",
+    subtitle: "Every book has a free preview. Order on WhatsApp and pay with bKash or Nagad.",
+    button_label: "How to order",
+    link_url: "/how-to-order",
+    alt_text: "",
+    bg_color: "#18211d",
+    text_color: "#ffffff",
+    covers: [],
+  },
+];
+
+/** Extra HTML appended to a demo description, to show rich text (tables, lists, links). */
+export const DEMO_DESCRIPTION_EXTRA: Record<string, string> = {
+  freelance:
+    "<h3>Ways to receive money, compared</h3><table><tbody><tr><th>Method</th><th>Speed</th><th>Typical cost</th></tr><tr><td>Bank wire</td><td>2–4 days</td><td>Fixed fee plus exchange margin</td></tr><tr><td>Payment platform to local bank</td><td>1–3 days</td><td>About 2–3%</td></tr><tr><td>Card withdrawal</td><td>Same day</td><td>Highest</td></tr></tbody></table><p>The book explains each one step by step. See <a href=\"/how-to-order\">how to order</a> to get your copy today.</p>",
+  sql: "<h3>What you will be able to answer</h3><ul><li>Which products sold best last month</li><li>Who your repeat customers are</li><li>Which day of the week brings the most orders</li></ul>",
+  ielts: "<p><strong>Who it is for:</strong> candidates aiming for band 6.5 to 7.5 in Writing Task 2.</p>",
+};
+
+/** Customer reviews shown on the book page: [name, rating, text, days ago]. */
+export const DEMO_REVIEWS: Record<string, [string, number, string, number][]> = {
+  type: [
+    ["Nusrat J.", 5, "Finally a typography book that does not assume I studied design. The before-and-after pages are the best part.", 3],
+    ["Tanvir A.", 5, "I fixed my CV layout the same evening. The font pairing cheat sheet is now on my desk.", 2],
+  ],
+  freelance: [
+    ["Mehedi H.", 5, "The pricing worksheet changed how I quote. I raised my rate and kept every client.", 40],
+    ["Sadia R.", 4, "Very practical. I wish the tax chapter were longer, but the invoice templates alone were worth it.", 22],
+    ["Rakib U.", 5, "Clear comparison of payment options. Saved me real money on the first transfer.", 9],
+  ],
+  nodir: [
+    ["Farhana K.", 5, "Beautiful writing. The grandmother's chapters stayed with me for days.", 14],
+    ["Imran S.", 4, "A slow, gentle novel. Perfect for a rainy weekend.", 6],
+  ],
+  kitchen: [
+    ["Shirin A.", 5, "Every recipe works on my single gas burner. The khichuri chapter is a family favourite now.", 30],
+    ["Arif M.", 4, "Simple, honest food. Good for students living alone.", 12],
+  ],
+  sql: [
+    ["Jahid H.", 5, "I run a small Facebook shop and now I can answer my own sales questions. Exercises are excellent.", 25],
+    ["Priya D.", 4, "Starts gently and builds up well. The last two chapters need a second read.", 8],
+  ],
+  monsoon: [["Kamrul I.", 4, "Short, sharp stories. The one about the night bus is my favourite.", 18]],
+  ielts: [
+    ["Ayesha B.", 5, "Went from 6.0 to 7.0 in Writing. The ten-minute planning method really works.", 35],
+    ["Shafin R.", 5, "The model essays are realistic, not perfect, which made them easier to learn from.", 16],
+    ["Lamia T.", 4, "Very useful. I would have liked more practice prompts.", 4],
+  ],
+  customers: [
+    ["Nadia P.", 5, "Real advice for selling on WhatsApp without ads. My first 50 orders came from chapter three.", 20],
+    ["Sabbir K.", 4, "Good scripts for replying to customers. A bit repetitive in the middle.", 11],
+  ],
+};

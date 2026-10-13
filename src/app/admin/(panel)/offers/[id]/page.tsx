@@ -17,8 +17,8 @@ export default async function EditOfferPage({ params }: { params: Promise<{ id: 
   return (
     <>
       <AdminPageHead
-        kicker="Offer"
         title={offer.title}
+        back={{ href: "/admin/offers", label: "Offers" }}
         actions={<DeleteButton label={`“${offer.title}”`} consequence="Prices go back to normal on the site within a few minutes." action={deleteOffer.bind(null, offer.id)} redirectTo="/admin/offers" />}
       />
       <OfferForm offer={offer} books={books} collections={opts.collections} />

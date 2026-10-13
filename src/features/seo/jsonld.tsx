@@ -1,6 +1,7 @@
 import { SITE } from "@/config/site";
 import { absoluteUrl } from "@/lib/env";
 import { coverUrl } from "@/features/books/cover";
+import { htmlToText } from "@/lib/rich-text";
 import type { BookDetail } from "@/features/books/types";
 import type { FaqItem, SiteSettings } from "@/features/settings/schema";
 
@@ -26,12 +27,12 @@ export function organizationJsonLd(settings: SiteSettings): Json {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": absoluteUrl("/#organization"),
-    name: SITE.name,
+    name: settings.site_name || SITE.name,
     alternateName: SITE.alternateNames,
     url: absoluteUrl("/"),
     logo: absoluteUrl("/apple-icon.png"),
-    description: SITE.description,
-    slogan: settings.tagline,
+    description: settings.default_meta_description,
+    ...(settings.tagline ? { slogan: settings.tagline } : {}),
     ...(settings.social_links.length ? { sameAs: settings.social_links.map((s) => s.url) } : {}),
     ...(settings.whatsapp_number
       ? {
@@ -47,12 +48,12 @@ export function organizationJsonLd(settings: SiteSettings): Json {
 }
 
 /** WebSite + SearchAction: lets Google show a search box for "eboi". */
-export function websiteJsonLd(): Json {
+export function websiteJsonLd(settings: Pick<SiteSettings, "site_name">): Json {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "@id": absoluteUrl("/#website"),
-    name: SITE.name,
+    name: settings.site_name || SITE.name,
     alternateName: SITE.alternateNames,
     url: absoluteUrl("/"),
     inLanguage: SITE.language,
@@ -78,7 +79,7 @@ export function bookJsonLd(book: BookDetail): Json {
     url,
     sku: book.book_code,
     ...(cover ? { image: absoluteUrl(cover) } : {}),
-    description: book.seo_description || book.description.slice(0, 500),
+    description: book.seo_description || htmlToText(book.description).slice(0, 500),
     ...(book.author ? { author: { "@type": "Person", name: book.author } } : {}),
     bookFormat: "https://schema.org/EBook",
     inLanguage: book.language,

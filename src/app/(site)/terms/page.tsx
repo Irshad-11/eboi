@@ -1,25 +1,58 @@
-import { getSettings } from "@/features/settings/queries";
+import type { Metadata } from "next";
+import { getSettings, fillTokens } from "@/features/settings/queries";
+import { getPublishedBooks } from "@/features/books/queries";
+import { autoCollectionBooks } from "@/features/collections/queries";
+import { ProductRow } from "@/features/books/components/product-row";
+import { whatsappLink } from "@/features/whatsapp/message";
+import { SECTIONS } from "@/config/analytics";
+import { HOME } from "@/config/site";
+import { JourneySection } from "@/features/home/journey-section";
 import { pageMetadata } from "@/features/seo/metadata";
-import { PageHeader } from "@/components/page-header";
+import { InfoLayout, OrderPanel, PageHeader } from "@/components/page-header";
 import { RichText } from "@/components/rich-text";
 
 // Must be a literal for Next.js static analysis. Keep in sync with PUBLIC_REVALIDATE_SECONDS.
 export const revalidate = 300;
 
-export const metadata = pageMetadata({
-  title: "Refunds and terms",
-  description: "What happens if a PDF is broken or wrong, how prices and offers work, and personal-use terms.",
-  path: "/terms",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({ page: "terms", path: "/terms", title: "Refund policy and terms" });
+}
+
+
+async function sidePanel() {
+  const [s, books] = await Promise.all([getSettings(), getPublishedBooks()]);
+  const steps = s.how_to_buy_steps.map((st) => ({ title: fillTokens(st.title, s), body: fillTokens(st.body, s) }));
+  return {
+    settings: s,
+    aside: <OrderPanel whatsappHref={s.whatsapp_number ? whatsappLink(s.whatsapp_number, "Hi eBoi!") : null} payments={s.payment_methods} responseTime={s.response_time} />,
+    journey: <JourneySection steps={steps} />,
+    popular: (
+      <ProductRow
+        id="popular-title"
+        title="Popular books"
+        books={autoCollectionBooks("best-selling", books).slice(0, HOME.rowCount)}
+        symbol={s.currency_symbol}
+        section={SECTIONS.bestSelling}
+        href="/collections/best-selling"
+      />
+    ),
+  };
+}
 
 export default async function TermsPage() {
-  const { terms_content } = await getSettings();
+  const { settings, aside, journey, popular } = await sidePanel();
   return (
     <>
-      <PageHeader kicker="The small print, in plain words" title="Refunds and terms" path="/terms" crumb="Refunds and terms" />
-      <section className="container-x grid border-t-[3px] border-ink pt-10 pb-20 lg:grid-cols-12">
-        <RichText text={terms_content || "Terms have not been written yet."} className="lg:col-span-8 lg:col-start-3" />
-      </section>
+      <PageHeader title="Refund policy and terms" path="/terms" crumb="Refund policy" />
+      <InfoLayout aside={aside}>
+        <section className="rounded-lg border border-line bg-white p-5 md:p-8">
+          <RichText html={settings.terms_content} className="text-base" />
+        </section>
+      </InfoLayout>
+      <div className="pt-4">
+        {journey}
+        {popular}
+      </div>
     </>
   );
 }

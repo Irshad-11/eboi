@@ -1,33 +1,52 @@
 import "server-only";
 import { ImageResponse } from "next/og";
-import { SITE } from "@/config/site";
+import { BUCKETS } from "@/config/storage";
+import { getSettings } from "@/features/settings/queries";
 import { OG, ogFonts } from "./og-fonts";
+import { storageDataUri } from "./og-image-data";
 import { OgWordmark } from "./og-wordmark";
 
-/** Default share card: the nameplate, the promise, and how it works in one line. */
-export async function SiteOgImage(): Promise<ImageResponse> {
-  const fonts = await ogFonts();
+const SIZE = { width: 1200, height: 630 };
+
+/** A share image the admin uploaded, drawn full-bleed at 1200 × 630. */
+export function uploadedOgImage(src: string, fonts: Awaited<ReturnType<typeof ogFonts>>): ImageResponse {
   return new ImageResponse(
     (
-      <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", background: OG.paper, padding: "64px 72px", fontFamily: "Newsreader", color: OG.ink }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "Plex Mono", fontSize: 20, letterSpacing: 3, color: OG.ink3, textTransform: "uppercase", borderBottom: `2px solid ${OG.ink}`, paddingBottom: 14 }}>
-          <span>A small PDF bookshop</span>
-          <span>Dhaka</span>
-        </div>
-        <div style={{ display: "flex", marginTop: 46 }}>
-          <OgWordmark width={520} color={OG.green900} />
-        </div>
-        <div style={{ display: "flex", marginTop: 40, fontSize: 64, fontWeight: 600, letterSpacing: -1.5, lineHeight: 1.02 }}>
-          Read the first pages.&nbsp;
-          <span style={{ fontStyle: "italic", fontWeight: 500, color: OG.green700 }}>Then decide.</span>
-        </div>
-        <div style={{ display: "flex", flex: 1 }} />
-        <div style={{ display: "flex", justifyContent: "space-between", borderTop: `5px solid ${OG.ink}`, paddingTop: 18, fontSize: 28, color: OG.ink3 }}>
-          <span>{SITE.defaultTagline}</span>
-          <span style={{ fontFamily: "Plex Mono", fontSize: 22 }}>Preview free · Buy on WhatsApp</span>
-        </div>
+      <div style={{ display: "flex", width: "100%", height: "100%", background: OG.white }}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- Satori image, not a page */}
+        <img src={src} width={SIZE.width} height={SIZE.height} alt="" style={{ objectFit: "cover" }} />
       </div>
     ),
-    { width: 1200, height: 630, fonts },
+    { ...SIZE, fonts },
+  );
+}
+
+/** Default share card. The admin's default share image wins when one is set. */
+export async function SiteOgImage(): Promise<ImageResponse> {
+  const [settings, fonts] = await Promise.all([getSettings(), ogFonts()]);
+  const uploaded = await storageDataUri(BUCKETS.media, settings.default_og_image_path).catch(() => null);
+  if (uploaded) return uploadedOgImage(uploaded, fonts);
+
+  const points = ["Free preview", "bKash and Nagad", "Delivered on WhatsApp"];
+  return new ImageResponse(
+    (
+      <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", background: OG.white, padding: "72px 80px", fontFamily: "Figtree", color: OG.text }}>
+        <OgWordmark width={300} color={OG.brand} />
+        <div style={{ display: "flex", marginTop: 56, maxWidth: 900, fontSize: 68, fontWeight: 700, lineHeight: 1.08, letterSpacing: -1 }}>
+          {settings.tagline || "PDF books, delivered on WhatsApp"}
+        </div>
+        <div style={{ display: "flex", flex: 1 }} />
+        <div style={{ display: "flex", gap: 14 }}>
+          {points.map((p) => (
+            <div key={p} style={{ display: "flex", alignItems: "center", gap: 10, background: OG.brandSoft, color: OG.brandInk, borderRadius: 999, padding: "12px 24px", fontSize: 28, fontWeight: 600 }}>
+              <div style={{ display: "flex", width: 10, height: 10, borderRadius: 999, background: OG.brand }} />
+              {p}
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", position: "absolute", left: 0, right: 0, bottom: 0, height: 14, background: OG.brand }} />
+      </div>
+    ),
+    { ...SIZE, fonts },
   );
 }

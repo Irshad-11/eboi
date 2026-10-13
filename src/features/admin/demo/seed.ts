@@ -1,13 +1,15 @@
 import "server-only";
-import { BUCKETS } from "@/config/storage";
+import { BANNER } from "@/config/limits";
+import { BUCKETS, MEDIA_FOLDERS, type BucketName } from "@/config/storage";
 import { SECTIONS, collectionSection, type EventType } from "@/config/analytics";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/database.types";
+import { plainTextToHtml } from "@/lib/rich-text";
 import { applyDiscount } from "@/features/offers/pricing";
-import { newObjectPath } from "../paths";
+import { newMediaPath, newObjectPath } from "../paths";
 import { removeFiles } from "../storage.server";
-import { DEMO_BOOKS, DEMO_COLLECTIONS, DEMO_OFFERS, DEMO_SEARCHES, type DemoBook } from "./data";
-import { renderDemoCover } from "./covers";
+import { DEMO_BANNERS, DEMO_BOOKS, DEMO_CATEGORIES, DEMO_COLLECTIONS, DEMO_DESCRIPTION_EXTRA, DEMO_OFFERS, DEMO_REVIEWS, DEMO_SEARCHES, type DemoBook } from "./data";
+import { renderDemoBanner, renderDemoCover, renderDemoThumbs } from "./covers";
 import { renderDemoPreview } from "./previews";
 
 type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
@@ -39,10 +41,25 @@ export async function hasDemoData(): Promise<boolean> {
 export async function loadDemo(): Promise<{ books: number; sales: number; events: number }> {
   const db = createServiceClient();
   const now = Date.now();
+  const upload = async (bucket: string, path: string, body: Uint8Array, contentType: string) => {
+    const { error } = await db.storage.from(bucket).upload(path, body, { contentType, cacheControl: "31536000" });
+    if (error) throw error;
+  };
   try {
+    // Categories: only names not already in the list.
+    const { data: existingCats } = await db.from("categories").select("name, slug");
+    const takenNames = new Set((existingCats ?? []).map((c) => c.name));
+    const takenSlugs = new Set((existingCats ?? []).map((c) => c.slug));
+    const newCats = DEMO_CATEGORIES.map((c, i) => ({ ...c, sort_order: i + 1 })).filter((c) => !takenNames.has(c.name) && !takenSlugs.has(c.slug));
+    if (newCats.length) {
+      const { error } = await db.from("categories").insert(newCats.map((c) => ({ ...c, show_on_home: true, is_demo: true })));
+      if (error) throw error;
+    }
+
     // Collections
     const { data: cols, error: colErr } = await db
       .from("collections")
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- seed-only key
       .insert(DEMO_COLLECTIONS.map(({ key: _k, ...c }) => ({ ...c, is_demo: true, show_on_home: true })))
       .select("id, slug");
     if (colErr) throw colErr;
@@ -72,13 +89,14 @@ export async function loadDemo(): Promise<{ books: number; sales: number; events
     // Books with generated files. Covers and previews are made one book at a
     // time to keep memory flat on small serverless instances.
     const bookId = new Map<string, string>();
+    const coverPng = new Map<string, Uint8Array>();
     for (const b of DEMO_BOOKS) {
       const id = crypto.randomUUID();
       bookId.set(b.key, id);
       const coverPath = newObjectPath(id, "png");
       const cover = await renderDemoCover(b);
-      const up1 = await db.storage.from(BUCKETS.covers).upload(coverPath, cover, { contentType: "image/png", cacheControl: "31536000" });
-      if (up1.error) throw up1.error;
+      if (DEMO_BANNERS.some((x) => x.covers.includes(b.key))) coverPng.set(b.key, cover);
+      await upload(BUCKETS.covers, coverPath, cover, "image/png");
 
       let previewPath: string | null = null;
       let previewPages: number | null = null;
@@ -86,11 +104,54 @@ export async function loadDemo(): Promise<{ books: number; sales: number; events
         previewPages = b.key === "ielts" ? 9 : 7;
         previewPath = newObjectPath(id, "pdf");
         const pdf = await renderDemoPreview(b, previewPages);
-        const up2 = await db.storage.from(BUCKETS.previews).upload(previewPath, pdf, { contentType: "application/pdf", cacheControl: "31536000" });
-        if (up2.error) throw up2.error;
+        await upload(BUCKETS.previews, previewPath, pdf, "application/pdf");
+      }
+      const thumbs: string[] = [];
+      if (previewPath) {
+        for (const png of await renderDemoThumbs(b)) {
+          const path = newMediaPath(MEDIA_FOLDERS.thumbs, id, "png");
+          await upload(BUCKETS.media, path, png, "image/png");
+          thumbs.push(path);
+        }
       }
 
-      const { error } = await db.from("books").insert(toRow(b, id, now, coverPath, previewPath, previewPages, b.pinnedOffer ? offerId.get(b.pinnedOffer) : null));
+      const { error } = await db.from("books").insert({ ...toRow(b, id, now, coverPath, previewPath, previewPages, b.pinnedOffer ? offerId.get(b.pinnedOffer) : null), preview_thumbs: thumbs });
+      if (error) throw error;
+    }
+
+    // Reviews
+    const reviews = DEMO_BOOKS.flatMap((b) =>
+      (DEMO_REVIEWS[b.key] ?? []).map(([author_name, rating, body, daysAgo], i) => ({
+        book_id: bookId.get(b.key)!,
+        author_name,
+        rating,
+        body,
+        review_date: new Date(now - daysAgo * DAY).toISOString().slice(0, 10),
+        sort_order: i,
+        is_visible: true,
+        is_demo: true,
+      })),
+    );
+    if (reviews.length) {
+      const { error } = await db.from("book_reviews").insert(reviews);
+      if (error) throw error;
+    }
+
+    // Hero slides: generated images for slides with covers, plain text otherwise.
+    for (const [i, b] of DEMO_BANNERS.entries()) {
+      const id = crypto.randomUUID();
+      let desktop: string | null = null;
+      let mobile: string | null = null;
+      if (b.covers.length) {
+        const covers = b.covers.map((k) => coverPng.get(k)).filter((c): c is Uint8Array => !!c);
+        desktop = newMediaPath(MEDIA_FOLDERS.banners, id, "png");
+        mobile = newMediaPath(MEDIA_FOLDERS.banners, id, "png");
+        await upload(BUCKETS.media, desktop, await renderDemoBanner(b, covers, BANNER.desktop), "image/png");
+        await upload(BUCKETS.media, mobile, await renderDemoBanner(b, covers, BANNER.mobile), "image/png");
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- seed-only keys
+      const { key: _k, covers: _c, ...fields } = b;
+      const { error } = await db.from("banners").insert({ ...fields, id, image_desktop_path: desktop, image_mobile_path: mobile, sort_order: i + 1, is_active: true, is_demo: true });
       if (error) throw error;
     }
 
@@ -178,7 +239,8 @@ function toRow(b: DemoBook, id: string, now: number, cover: string, preview: str
     page_count: b.page_count,
     format: "PDF",
     file_size: b.file_size,
-    description: b.description,
+    description: plainTextToHtml(b.description) + (DEMO_DESCRIPTION_EXTRA[b.key] ?? ""),
+    cover_alt: `${b.coverTitle ?? b.title} by ${b.coverAuthor ?? b.author}, book cover`,
     highlights: b.highlights,
     table_of_contents: b.toc,
     price: b.price,
@@ -240,6 +302,7 @@ function makeEvents(rand: () => number, now: number, bookIds: Map<string, string
       };
 
       push("page_view", { path: "/", dedupe_key: "page_view|/" });
+      if (rand() < 0.07) push("banner_click", { section: SECTIONS.hero, dedupe_key: `banner_click|${Math.floor(rand() * DEMO_BANNERS.length)}` });
       if (rand() < 0.3) push("page_view", { path: "/shop", dedupe_key: "page_view|/shop" });
       if (rand() < 0.12) {
         const s = DEMO_SEARCHES[Math.floor(rand() * DEMO_SEARCHES.length)]!;
@@ -267,6 +330,7 @@ function makeEvents(rand: () => number, now: number, bookIds: Map<string, string
           if (rand() < 0.7) push("whatsapp_open", { book_id: bid, section, path });
         }
         if (rand() < 0.08) push("list_add", { book_id: bid, section: SECTIONS.detailBuyBox, path });
+        if (rand() < 0.03) push("share_click", { book_id: bid, section: SECTIONS.detailBuyBox, path });
       }
     }
   }
@@ -274,22 +338,31 @@ function makeEvents(rand: () => number, now: number, bookIds: Map<string, string
 }
 
 /**
- * Removes every demo row AND every file in the demo books' storage folders.
- * Events and sales are deleted explicitly (their book_id would otherwise just
- * be set to null and the rows would linger).
+ * Removes every demo row AND every file in the demo books' and slides'
+ * storage folders. Events and sales are deleted explicitly (their book_id
+ * would otherwise just be set to null and the rows would linger).
  */
 export async function deleteDemo(): Promise<{ books: number; files: number }> {
   const db = createServiceClient();
-  const { data: books } = await db.from("books").select("id, cover_path, preview_path").eq("is_demo", true);
+  const [{ data: books }, { data: banners }] = await Promise.all([
+    db.from("books").select("id").eq("is_demo", true),
+    db.from("banners").select("id").eq("is_demo", true),
+  ]);
   const ids = (books ?? []).map((b) => b.id);
+  const bannerIds = (banners ?? []).map((b) => b.id);
 
-  // Everything in each demo book's folder, not just the paths on the row.
+  // Everything in each demo folder, not just the paths on the rows.
+  const folders: [BucketName, string[]][] = [
+    [BUCKETS.covers, ids],
+    [BUCKETS.previews, ids],
+    [BUCKETS.media, [...ids.map((id) => `${MEDIA_FOLDERS.thumbs}/${id}`), ...ids.map((id) => `${MEDIA_FOLDERS.seo}/${id}`), ...bannerIds.map((id) => `${MEDIA_FOLDERS.banners}/${id}`)]],
+  ];
   let files = 0;
-  for (const bucket of [BUCKETS.covers, BUCKETS.previews] as const) {
+  for (const [bucket, prefixes] of folders) {
     const paths: string[] = [];
-    for (const id of ids) {
-      const { data } = await db.storage.from(bucket).list(id, { limit: 100 });
-      for (const f of data ?? []) if (f.id) paths.push(`${id}/${f.name}`);
+    for (const prefix of prefixes) {
+      const { data } = await db.storage.from(bucket).list(prefix, { limit: 100 });
+      for (const f of data ?? []) if (f.id) paths.push(`${prefix}/${f.name}`);
     }
     files += paths.length;
     await removeFiles(bucket, paths);
@@ -298,9 +371,12 @@ export async function deleteDemo(): Promise<{ books: number; files: number }> {
   const steps = [
     await db.from("events").delete().eq("is_demo", true),
     await db.from("sales_log").delete().eq("is_demo", true),
+    await db.from("book_reviews").delete().eq("is_demo", true),
+    await db.from("banners").delete().eq("is_demo", true),
     await db.from("offers").delete().eq("is_demo", true),
     await db.from("collections").delete().eq("is_demo", true),
     await db.from("books").delete().eq("is_demo", true),
+    await db.from("categories").delete().eq("is_demo", true),
   ];
   const err = steps.find((s) => s.error)?.error;
   if (err) throw new Error(err.message);

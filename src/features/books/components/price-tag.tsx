@@ -10,24 +10,25 @@ type Props = {
 };
 
 const SIZES = {
-  sm: { now: "text-[0.95rem]", was: "text-[0.8rem]" },
-  md: { now: "text-[1.125rem]", was: "text-[0.875rem]" },
-  lg: { now: "text-price md:text-[2rem]", was: "text-[1rem]" },
+  sm: { now: "text-base", was: "text-sm" },
+  md: { now: "text-lg", was: "text-sm" },
+  lg: { now: "text-2xl", was: "text-md" },
 } as const;
 
-/** Final price first and loudest; the struck price is context, not decoration. */
+/** Sale price in red, old price struck through in grey. */
 export function PriceTag({ pricing, symbol, size = "md", className }: Props) {
   const s = SIZES[size];
+  const sale = pricing.was != null;
   return (
-    <span className={cn("inline-flex flex-wrap items-baseline gap-x-2 gap-y-0.5", className)}>
-      <span className={cn("price", s.now, pricing.was != null && "text-green-800")}>
-        <span className="sr-only">Price </span>
+    <span className={cn("inline-flex flex-wrap items-baseline gap-x-1.5", className)}>
+      <span className={cn("price-now", s.now)} data-sale={sale}>
+        <span className="sr-only">{sale ? "Sale price " : "Price "}</span>
         {formatPrice(pricing.final, symbol)}
       </span>
-      {pricing.was != null && (
+      {sale && (
         <span className={cn("price-was", s.was)}>
-          <span className="sr-only">was </span>
-          {formatPrice(pricing.was, symbol)}
+          <span className="sr-only">Regular price </span>
+          {formatPrice(pricing.was!, symbol)}
         </span>
       )}
     </span>

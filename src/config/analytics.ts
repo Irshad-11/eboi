@@ -17,6 +17,10 @@ export const EVENT_TYPES = [
   "whatsapp_open",
   "copy_click",
   "list_add",
+  /** Click on a home banner slide. */
+  "banner_click",
+  /** Share button on a book page. */
+  "share_click",
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -27,6 +31,17 @@ export type EventType = (typeof EVENT_TYPES)[number];
  * are listed here to keep spelling consistent.
  */
 export const SECTIONS = {
+  hero: "home_hero",
+  categories: "home_categories",
+  collectionTiles: "home_collection_tiles",
+  recent: "home_recent",
+  journey: "home_journey",
+  faq: "home_faq",
+  categoryGrid: "category_grid",
+  detailGallery: "detail_gallery",
+  detailTabs: "detail_tabs",
+  detailReviews: "detail_reviews",
+  searchSuggest: "search_suggest",
   frontPage: "home_front_page",
   newest: "home_newest",
   offers: "home_offers",
@@ -69,11 +84,21 @@ export const STORAGE_KEYS = {
 
 /** Human labels for section keys in the admin. Unknown keys fall back to a tidied key. */
 const SECTION_LABELS: Record<string, string> = {
+  [SECTIONS.hero]: "Home: banner carousel",
+  [SECTIONS.categories]: "Home: categories",
+  [SECTIONS.collectionTiles]: "Home: collection tiles",
+  [SECTIONS.recent]: "Home: recently viewed",
+  [SECTIONS.journey]: "Home: how to order",
+  [SECTIONS.faq]: "Home: FAQ",
+  [SECTIONS.categoryGrid]: "Category page",
+  [SECTIONS.detailGallery]: "Book page: gallery",
+  [SECTIONS.detailTabs]: "Book page: tabs",
+  [SECTIONS.detailReviews]: "Book page: reviews",
   [SECTIONS.frontPage]: "Home: front page",
   [SECTIONS.newest]: "Home: newest book",
   [SECTIONS.offers]: "Home: offers",
   [SECTIONS.bestSelling]: "Home: best selling",
-  [SECTIONS.latest]: "Home: latest",
+  [SECTIONS.latest]: "Home: new arrivals",
   [SECTIONS.howItWorks]: "Home: how it works",
   [SECTIONS.about]: "Home: about",
   [SECTIONS.continueBrowsing]: "Continue browsing",

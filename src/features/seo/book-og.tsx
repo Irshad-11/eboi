@@ -1,76 +1,65 @@
 import "server-only";
 import { ImageResponse } from "next/og";
 import { BUCKETS } from "@/config/storage";
-import { isSupabaseConfigured } from "@/lib/env";
 import { formatPrice } from "@/lib/format";
 import { hasBangla } from "@/lib/bangla";
-import { createServiceClient } from "@/lib/supabase/service";
 import { getBookBySlug } from "@/features/books/queries";
+import { discountLabel } from "@/features/offers/pricing";
 import { getSettings } from "@/features/settings/queries";
 import { OG, ogFonts } from "./og-fonts";
+import { storageDataUri } from "./og-image-data";
 import { OgWordmark } from "./og-wordmark";
-import { SiteOgImage } from "./site-og";
+import { SiteOgImage, uploadedOgImage } from "./site-og";
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
-async function coverDataUri(path: string | null): Promise<string | null> {
-  if (!path || !isSupabaseConfigured) return null;
-  const { data } = await createServiceClient().storage.from(BUCKETS.covers).download(path);
-  if (!data) return null;
-  const type = data.type || (path.endsWith(".png") ? "image/png" : "image/jpeg");
-  return `data:${type};base64,${Buffer.from(await data.arrayBuffer()).toString("base64")}`;
-}
-
 /**
- * Per-book share card for WhatsApp, Facebook and X: the real cover on the
- * right, title and price set like a catalogue entry on the left.
+ * Per-book share card for WhatsApp, Facebook and X: title, author and price
+ * on the left, the real cover on the right. A share image set on the book
+ * in the admin is used instead when there is one.
  */
 export async function renderBookOg(slug: string): Promise<ImageResponse> {
   const book = await getBookBySlug(slug);
   if (!book) return SiteOgImage();
-  const [settings, fonts, cover] = await Promise.all([getSettings(), ogFonts(), coverDataUri(book.cover_path)]);
+  const [settings, fonts] = await Promise.all([getSettings(), ogFonts()]);
+  const uploaded = await storageDataUri(BUCKETS.media, book.og_image_path).catch(() => null);
+  if (uploaded) return uploadedOgImage(uploaded, fonts);
+  const cover = await storageDataUri(BUCKETS.covers, book.cover_path).catch(() => null);
 
   // Satori cannot shape Bengali script. Bangla titles lean on the cover image,
   // which already carries the title, and show the Latin subtitle if any.
   const bangla = hasBangla(book.title);
   const title = bangla ? (book.subtitle && !hasBangla(book.subtitle) ? book.subtitle : "A Bangla PDF book") : book.title;
-  const size = title.length > 60 ? 52 : title.length > 32 ? 64 : 78;
+  const size = title.length > 60 ? 50 : title.length > 32 ? 60 : 72;
   const p = book.pricing;
+  const sym = settings.currency_symbol;
+  const off = discountLabel(p, sym);
+  const meta = [book.category, bangla ? null : book.language, book.page_count ? `${book.page_count} pages` : null].filter(Boolean).join(" · ");
 
   return new ImageResponse(
     (
-      <div style={{ display: "flex", width: "100%", height: "100%", background: OG.paper, fontFamily: "Newsreader", color: OG.ink }}>
-        <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "56px 40px 48px 64px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, fontFamily: "Plex Mono", fontSize: 20, letterSpacing: 3, color: OG.ink3, textTransform: "uppercase" }}>
-            <span>{book.book_code}</span>
-            <span>·</span>
-            <span>{book.category}</span>
-          </div>
-          <div style={{ display: "flex", marginTop: 26, fontSize: size, fontWeight: 600, lineHeight: 1.0, letterSpacing: -1.5 }}>{title}</div>
-          {!bangla && book.author ? (
-            <div style={{ display: "flex", marginTop: 22, fontSize: 32, fontStyle: "italic", fontWeight: 500, color: OG.green700 }}>
-              by {book.author}
-            </div>
-          ) : null}
+      <div style={{ display: "flex", width: "100%", height: "100%", background: OG.white, fontFamily: "Figtree", color: OG.text }}>
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "64px 48px 56px 72px" }}>
+          <div style={{ display: "flex", fontSize: 26, color: OG.text3 }}>{meta}</div>
+          <div style={{ display: "flex", marginTop: 20, fontSize: size, fontWeight: 700, lineHeight: 1.08, letterSpacing: -0.5 }}>{title}</div>
+          {!bangla && book.author ? <div style={{ display: "flex", marginTop: 18, fontSize: 32, color: OG.text2 }}>by {book.author}</div> : null}
           <div style={{ display: "flex", flex: 1 }} />
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", borderTop: `5px solid ${OG.ink}`, paddingTop: 22 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 16, fontFamily: "Plex Mono" }}>
-              <span style={{ fontSize: 46 }}>{formatPrice(p.final, settings.currency_symbol)}</span>
-              {p.was != null ? (
-                <span style={{ fontSize: 26, color: OG.ink3, textDecoration: "line-through" }}>{formatPrice(p.was, settings.currency_symbol)}</span>
-              ) : null}
-            </div>
-            <OgWordmark width={150} color={OG.green900} />
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <span style={{ fontSize: 56, fontWeight: 700, color: off ? OG.sale : OG.text }}>{formatPrice(p.final, sym)}</span>
+            {p.was != null ? <span style={{ fontSize: 32, color: OG.text3, textDecoration: "line-through" }}>{formatPrice(p.was, sym)}</span> : null}
+            {off ? <span style={{ display: "flex", background: OG.sale, color: OG.white, borderRadius: 8, padding: "6px 14px", fontSize: 26, fontWeight: 700 }}>{off}</span> : null}
           </div>
-          <div style={{ display: "flex", marginTop: 14, fontSize: 24, color: OG.ink3 }}>Read the first pages free. Buy on WhatsApp.</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 28 }}>
+            <span style={{ fontSize: 26, color: OG.text2 }}>Free preview · Order on WhatsApp</span>
+            <OgWordmark width={140} color={OG.brand} />
+          </div>
         </div>
-        <div style={{ display: "flex", width: 470, background: OG.green900, alignItems: "center", justifyContent: "center" }}>
+        <div style={{ display: "flex", width: 440, background: OG.brandSoft, alignItems: "center", justifyContent: "center" }}>
           {cover ? (
-            <img src={cover} width={300} height={450} alt="" style={{ objectFit: "cover", boxShadow: `10px 12px 0 0 ${OG.green950}`, border: `2px solid ${OG.green950}` }} />
+            // eslint-disable-next-line @next/next/no-img-element -- Satori image, not a page
+            <img src={cover} width={300} height={450} alt="" style={{ objectFit: "cover", borderRadius: 6, boxShadow: "0 18px 40px rgba(16,24,20,0.25)" }} />
           ) : (
-            <div style={{ display: "flex", width: 300, height: 450, background: OG.green800, color: OG.paper, padding: 30, fontSize: 40, fontWeight: 600, alignItems: "flex-end", boxShadow: `10px 12px 0 0 ${OG.green950}` }}>
-              {title}
-            </div>
+            <div style={{ display: "flex", width: 300, height: 450, borderRadius: 6, background: OG.brand, color: OG.white, padding: 30, fontSize: 38, fontWeight: 700, alignItems: "flex-end" }}>{title}</div>
           )}
         </div>
       </div>

@@ -1,17 +1,21 @@
 {
-  "$schema": "https://eboi.vercel.app/book-import.schema.json",
+  "$schema": "https://eboi-pdf.vercel.app/book-import.schema.json",
   "format_version": 1,
   "slug": "the-quiet-ledger",
   "title": "The Quiet Ledger",
   "subtitle": "Bookkeeping for one-person businesses, in an hour a week",
   "author": "Your Name",
   "category": "Business",
-  "tags": ["bookkeeping", "small business", "money"],
+  "tags": [
+    "bookkeeping",
+    "small business",
+    "money"
+  ],
   "language": "English",
   "page_count": 118,
   "format": "PDF",
   "file_size": "4.2 MB",
-  "description": "Most small businesses do not fail for lack of customers. They fail because nobody knows where the money went.\n\nThis book sets up a one-hour weekly routine: what to write down, where, and how to read it at the end of the month.",
+  "description": "<p>Most small businesses do not fail for lack of customers. They fail because nobody knows where the money went.</p><p>This book sets up a <strong>one-hour weekly routine</strong>: what to write down, where, and how to read it at the end of the month.</p>",
   "highlights": [
     "A one-page weekly checklist",
     "A simple ledger template you can copy",
@@ -31,8 +35,27 @@
   "badge": "new",
   "seo_title": null,
   "seo_description": null,
+  "focus_keyword": "bookkeeping for small business",
+  "seo_keywords": [
+    "bookkeeping pdf",
+    "small business accounts"
+  ],
+  "canonical_url": null,
+  "noindex": false,
+  "cover_alt": "The Quiet Ledger by Your Name, book cover",
   "internal_file_note": "D:/eboi/books/the-quiet-ledger-FINAL.pdf",
-  "collections": ["start-a-side-business"],
+  "collections": [
+    "start-a-side-business"
+  ],
+  "reviews": [
+    {
+      "author_name": "A. Rahman",
+      "rating": 5,
+      "body": "Simple and clear. I finally know my monthly profit.",
+      "review_date": "2026-10-01",
+      "is_visible": true
+    }
+  ],
   "files": {
     "cover": "the-quiet-ledger-cover.jpg",
     "preview": "the-quiet-ledger-preview.pdf"
