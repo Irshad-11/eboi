@@ -66,14 +66,23 @@ export function OrderDialog({ open, onClose, message, bookIds, section, title = 
       <label htmlFor="order-message" className="field-label">
         Your message
       </label>
-      <textarea
-        id="order-message"
-        readOnly
-        value={message}
-        rows={Math.min(9, message.split("\n").length + 1)}
-        className="textarea resize-none bg-muted text-base"
-        onFocus={(e) => e.currentTarget.select()}
-      />
+      <div className="relative">
+        <textarea
+          id="order-message"
+          readOnly
+          value={message}
+          rows={Math.min(9, message.split("\n").length + 1)}
+          className="textarea resize-none bg-muted text-base"
+          onFocus={(e) => e.currentTarget.select()}
+        />
+        {/* "Copied" stamp on the message; only the patch behind the stamp is blurred. */}
+        {copied && (
+          <span className="message-stamp" aria-hidden="true">
+            <IconCheck size={20} />
+            Copied
+          </span>
+        )}
+      </div>
       {showUsd && <AbroadPayment className="mt-4" />}
       {!showUsd && next.length > 0 && (
         <ol className="mt-4 space-y-2">
