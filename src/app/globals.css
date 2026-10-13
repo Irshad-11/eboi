@@ -697,6 +697,26 @@
     animation: stamp 520ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
   }
 
+  /* Header: small dashed "PDF only" box above the logo. */
+  .pdf-only-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 0.3125rem;
+    border: 1px dashed var(--color-brand);
+    border-radius: 4px;
+    color: var(--color-brand);
+    background: var(--color-brand-soft);
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  @media (min-width: 48rem) {
+    .pdf-only-badge {
+      font-size: 0.6875rem;
+    }
+  }
+
   /* Order dialog: "Copied" stamped on the message, blurring just what is behind it. */
   .message-stamp {
     position: absolute;

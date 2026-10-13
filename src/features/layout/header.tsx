@@ -17,7 +17,11 @@ export function Header({ nav, whatsappNumber, siteName, quickLinks = [] }: Props
       <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85">
         <div className="container-x flex h-14 items-center gap-2 md:h-16 md:gap-4">
           <MobileHeaderTools nav={nav} position="start" />
-          <Link href="/" className="flex shrink-0 items-center py-2" aria-label={`${siteName} home`}>
+          <Link href="/" className="flex shrink-0 flex-col items-start gap-0.5 py-1" aria-label={`${siteName} home. PDF books only`}>
+            {/* Says at a glance that the shop sells PDF books only, no printed copies. */}
+            <span className="pdf-only-badge" title="We sell PDF books only. No printed copies.">
+              PDF only
+            </span>
             <Wordmark className="h-6 w-auto text-brand-ink md:h-7" />
           </Link>
           <SearchBox className="mx-auto hidden w-full max-w-2xl lg:block" />
