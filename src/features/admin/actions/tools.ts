@@ -39,7 +39,7 @@ async function referencedPaths(db: ReturnType<typeof createServiceClient>): Prom
     db.from("categories").select("image_path"),
     db.from("collections").select("image_path, og_image_path"),
     db.from("page_seo").select("og_image_path"),
-    db.from("site_settings").select("default_og_image_path"),
+    db.from("site_settings").select("*"),
   ]);
   const failed = [books, banners, categories, collections, pages, settings].find((r) => r.error);
   if (failed?.error) throw new Error(failed.error.message);
@@ -49,7 +49,7 @@ async function referencedPaths(db: ReturnType<typeof createServiceClient>): Prom
     ...(categories.data ?? []).map((c) => c.image_path),
     ...(collections.data ?? []).flatMap((c) => [c.image_path, c.og_image_path]),
     ...(pages.data ?? []).map((p) => p.og_image_path),
-    ...(settings.data ?? []).map((s) => s.default_og_image_path),
+    ...(settings.data ?? []).flatMap((s) => [s.default_og_image_path, s.announcement_image, s.popup_image]),
   ];
   return new Set(paths.filter((p): p is string => !!p));
 }

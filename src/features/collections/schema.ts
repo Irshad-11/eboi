@@ -19,7 +19,7 @@ export const collectionInputSchema = z
     sort_order: z.coerce.number().int().min(-1000).max(1000).default(0),
     show_on_home: z.boolean().default(true),
     show_in_nav: z.boolean().default(false),
-    image_path: z.string().max(200).nullable().default(null),
+    image_path: z.string().max(1000).nullable().default(null),
   })
   .and(seoRowSchema);
 

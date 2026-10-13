@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { announcePreviewChange } from "./preview-panel";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { HOME_SECTION_TYPES, type HomeSection, type HomeSectionType } from "@/features/settings/schema";
@@ -69,7 +70,10 @@ export function HomeLayoutForm({ sections }: { sections: HomeSection[] }) {
           start(async () => {
             const res = await saveHomeLayout({ home_sections: list });
             setNotice(res.ok ? { tone: "ok", text: res.message ?? "Saved." } : { tone: "error", text: res.error });
-            if (res.ok) router.refresh();
+            if (res.ok) {
+              router.refresh();
+              announcePreviewChange();
+            }
           })
         }
       >

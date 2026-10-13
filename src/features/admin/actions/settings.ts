@@ -12,6 +12,7 @@ import {
   navigationSchema,
   pagesContentSchema,
   seoSettingsSchema,
+  storefrontSchema,
 } from "@/features/settings/schema";
 import { seoRowSchema } from "@/features/seo/schema";
 import { requireAdmin } from "../auth";
@@ -74,6 +75,39 @@ export async function saveSeoSettings(values: z.input<typeof seoSettingsSchema> 
   }
   const res = await update({ ...parsed.data, default_og_image_path: og });
   if (res.ok && old?.default_og_image_path && old.default_og_image_path !== og) await removeFiles(BUCKETS.media, [old.default_og_image_path]);
+  return res;
+}
+
+const POPUP_FIELDS = ["popup_title", "popup_body", "popup_image", "popup_button_label", "popup_link", "popup_show_latest"] as const;
+
+/** Announcement bar, pop-up, slider speed, feature switches and popular searches. */
+export async function saveStorefront(values: z.input<typeof storefrontSchema>): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = storefrontSchema.safeParse(values);
+  if (!parsed.success) return fail("Some fields need fixing.", zodFieldErrors(parsed.error));
+  const v = parsed.data;
+  const supabase = await createSessionClient();
+  const { data: old } = await supabase.from("site_settings").select("*").eq("id", 1).maybeSingle();
+  const prev = (old ?? {}) as Record<string, unknown>;
+
+  for (const key of ["announcement_image", "popup_image"] as const) {
+    const path = v[key];
+    if (path && path !== prev[key]) {
+      const msg = await checkNewMedia(path, (p) => belongsToMedia(p, MEDIA_FOLDERS.promo, SITE_MEDIA_OWNER));
+      if (msg) return fail(msg, { [key]: msg });
+    }
+  }
+  // An edited pop-up is shown again, even to visitors who closed the old one.
+  const popupChanged = POPUP_FIELDS.some((k) => (prev[k] ?? null) !== (v[k] ?? null)) || (v.popup_enabled && !prev.popup_enabled);
+  const res = await update({
+    ...v,
+    features: v.features,
+    popup_version: popupChanged ? Date.now() : Number(prev.popup_version ?? 0),
+  });
+  if (res.ok) {
+    const replaced = (["announcement_image", "popup_image"] as const).map((k) => (prev[k] && prev[k] !== v[k] ? String(prev[k]) : null));
+    await removeFiles(BUCKETS.media, replaced);
+  }
   return res;
 }
 

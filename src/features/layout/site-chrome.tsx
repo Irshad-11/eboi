@@ -6,24 +6,36 @@ import { getCollections } from "@/features/collections/queries";
 import { SiteTrackers } from "@/features/analytics/site-trackers";
 import { ReaderProvider } from "@/features/preview/reader-context";
 import { isSupabaseConfigured } from "@/lib/env";
+import { mediaUrl } from "@/lib/media";
 import { AnnouncementBar } from "./announcement-bar";
 import { Header } from "./header";
 import { Footer } from "./footer";
 import { ShopProvider } from "./shop-context";
 import { FooterLinksProvider } from "./footer-links-context";
-import type { HeaderNav } from "./nav";
+import { getLiveOffers } from "@/features/offers/queries";
+import { getPublishedBooks, getRecentSales, toLite } from "@/features/books/queries";
+import { sortBooks } from "@/features/books/catalog";
+import { FloatingTools, PromoPopup, RecentSalesToast } from "./site-extras";
+import type { HeaderNav, NavItem } from "./nav";
 
 /** Announcement bar, header, footer, providers and trackers for every public page. */
 export async function SiteChrome({ children }: { children: ReactNode }) {
-  const [settings, categories, collections] = await Promise.all([getSettings(), getCategories(), getCollections()]);
+  const [settings, categories, collections, offers] = await Promise.all([getSettings(), getCategories(), getCollections(), getLiveOffers()]);
+  const f = settings.features;
+  const [allBooks, recentSales] = await Promise.all([
+    settings.popup_enabled && settings.popup_show_latest ? getPublishedBooks() : Promise.resolve([]),
+    f.recent_sales_toast ? getRecentSales(8) : Promise.resolve([]),
+  ]);
+  const latest = sortBooks(allBooks, "newest").slice(0, 3).map(toLite);
+  const catItems = categories.filter((c) => c.count > 0).map((c) => ({ label: c.name, url: `/category/${c.slug}`, icon: c.icon, count: c.count, pin: c.show_in_nav }));
+  const colItems = collections.filter((c) => c.books.length > 0).map((c) => ({ label: c.name, url: `/collections/${c.slug}`, count: c.books.length, pin: c.show_in_nav }));
+  const strip = (i: { pin: boolean } & NavItem): NavItem => ({ label: i.label, url: i.url, icon: i.icon, count: i.count });
   const nav: HeaderNav = {
-    categories: categories
-      .filter((c) => c.show_in_nav && c.count > 0)
-      .map((c) => ({ label: c.name, url: `/category/${c.slug}`, icon: c.icon })),
-    collections: collections
-      .filter((c) => c.show_in_nav && c.books.length > 0)
-      .map((c) => ({ label: c.name, url: `/collections/${c.slug}` })),
+    categories: catItems.map(strip),
+    collections: colItems.map(strip),
+    pinned: [...catItems, ...colItems].filter((i) => i.pin).map(strip),
     links: settings.header_links,
+    hasOffers: offers.length > 0,
   };
   const footerCategories = categories.filter((c) => c.count > 0).map((c) => ({ label: c.name, url: `/category/${c.slug}` }));
 
@@ -37,12 +49,35 @@ export async function SiteChrome({ children }: { children: ReactNode }) {
           {!isSupabaseConfigured && (
             <p className="bg-sale px-4 py-2 text-center text-sm text-white">Supabase is not connected. Fill in .env and restart.</p>
           )}
-          {settings.announcement_active && settings.announcement && (
-            <AnnouncementBar text={settings.announcement} link={settings.announcement_link} dismissible={settings.announcement_dismissible} />
+          {settings.announcement_active && (settings.announcement || settings.announcement_image) && (
+            <AnnouncementBar
+              text={settings.announcement}
+              link={settings.announcement_link}
+              dismissible={settings.announcement_dismissible}
+              bg={settings.announcement_bg}
+              fg={settings.announcement_fg}
+              image={mediaUrl(settings.announcement_image)}
+            />
           )}
           <Header nav={nav} whatsappNumber={settings.whatsapp_number} siteName={settings.site_name} />
           <main id="main">{children}</main>
           <Footer settings={settings} categories={footerCategories} />
+          {settings.popup_enabled && (settings.popup_title || settings.popup_body || settings.popup_image || latest.length > 0) && (
+            <PromoPopup
+              version={settings.popup_version}
+              title={settings.popup_title}
+              body={settings.popup_body}
+              image={mediaUrl(settings.popup_image)}
+              buttonLabel={settings.popup_button_label}
+              link={settings.popup_link}
+              books={latest}
+              delay={settings.popup_delay}
+              autoclose={settings.popup_autoclose}
+              frequency={settings.popup_frequency}
+            />
+          )}
+          <FloatingTools whatsapp={f.floating_whatsapp} backToTop={f.back_to_top} />
+          {recentSales.length > 0 && <RecentSalesToast sales={recentSales} />}
           <SiteTrackers />
           <Analytics />
         </ReaderProvider>

@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
+import { publicEnv } from "@/lib/env";
 import type { ClientSettings } from "@/features/settings/queries";
 import { DEFAULT_SETTINGS } from "@/features/settings/defaults";
 
@@ -16,6 +17,8 @@ const ShopContext = createContext<ClientSettings>({
   delivery_note: DEFAULT_SETTINGS.delivery_note,
   response_time: DEFAULT_SETTINGS.response_time,
   how_to_buy_steps: DEFAULT_SETTINGS.how_to_buy_steps,
+  features: DEFAULT_SETTINGS.features,
+  trending_searches: [],
 });
 
 export function ShopProvider({ settings, children }: { settings: ClientSettings; children: ReactNode }) {
@@ -24,4 +27,19 @@ export function ShopProvider({ settings, children }: { settings: ClientSettings;
 
 export function useShop(): ClientSettings {
   return useContext(ShopContext);
+}
+
+const noSubscribe = () => () => {};
+
+/**
+ * The address people actually use for this site: the browser's own origin
+ * (so shared links always match the domain in the address bar), falling back
+ * to the configured site URL during server rendering.
+ */
+export function useSiteUrl(): string {
+  return useSyncExternalStore(
+    noSubscribe,
+    () => (/^https?:$/.test(window.location.protocol) ? window.location.origin : publicEnv.siteUrl),
+    () => publicEnv.siteUrl,
+  );
 }

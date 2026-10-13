@@ -7,7 +7,7 @@ import { BookCover } from "./book-cover";
 import { DiscountBadge, StatusBadge } from "./book-badges";
 import { PriceTag } from "./price-tag";
 import { Rating } from "./rating";
-import { CardActions } from "./card-actions";
+import { CardActions, SoldCount } from "./card-actions";
 
 type Props = {
   book: BookCard;
@@ -63,7 +63,10 @@ export function ProductCard({
             {book.author}
           </p>
         )}
-        <Rating value={Number(book.rating)} count={book.rating_count} size={12} className="text-xs" />
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+          <Rating value={Number(book.rating)} count={book.rating_count} size={12} className="text-xs" />
+          <SoldCount sold={book.total_sells} />
+        </div>
         <PriceTag pricing={book.pricing} symbol={symbol} size="sm" className="mt-auto pt-1" />
       </div>
     </article>

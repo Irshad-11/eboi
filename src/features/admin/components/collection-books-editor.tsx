@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { announcePreviewChange } from "./preview-panel";
 import { useRouter } from "next/navigation";
 import { IconArrowDown, IconArrowUp, IconClose, IconPlus } from "@/components/icons";
 import { setCollectionBooks } from "../actions/collections";
@@ -40,7 +41,10 @@ export function CollectionBooksEditor({ collectionId, initial, books }: { collec
             start(async () => {
               const res = await setCollectionBooks(collectionId, ids);
               setNotice(res.ok ? { tone: "ok", text: res.message ?? "Saved." } : { tone: "error", text: res.error });
-              if (res.ok) router.refresh();
+              if (res.ok) {
+              router.refresh();
+              announcePreviewChange();
+            }
             })
           }
         >

@@ -14,7 +14,7 @@ export const seoRowSchema = z.object({
     .transform((v) => v || null)
     .refine((v) => v === null || v.startsWith("/") || /^https?:\/\/\S+$/i.test(v), "Use a path like /shop or a full https:// URL"),
   noindex: z.boolean().default(false),
-  og_image_path: z.string().max(200).nullish().transform((v) => v || null),
+  og_image_path: z.string().max(1000).nullish().transform((v) => v || null),
 });
 
 export type SeoRow = z.output<typeof seoRowSchema>;

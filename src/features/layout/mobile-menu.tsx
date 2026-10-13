@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Drawer } from "@/components/ui/drawer";
-import { CategoryIcon, IconChevronRight, IconClose, IconMenu, IconSearch } from "@/components/icons";
+import { CategoryIcon, IconBookOpen, IconChevronRight, IconClose, IconHeart, IconLayers, IconMenu, IconPercent, IconSearch, IconSpark, IconStar, IconTruck } from "@/components/icons";
 import { SearchBox } from "./search-box";
-import type { HeaderNav, NavItem } from "./nav";
+import { QUICK_LINKS, type HeaderNav, type NavItem } from "./nav";
 import { useFooterLinks } from "./footer-links-context";
 
 /**
@@ -63,8 +63,33 @@ export function MobileHeaderTools({ nav, position }: { nav: HeaderNav; position:
       </button>
       <Drawer open={menu} onClose={() => setMenu(false)} title="Menu">
         <nav aria-label="Menu" className="pb-6">
-          <ul className="py-2">
-            <Item item={{ label: "All books", url: "/shop" }} onPick={close} />
+          <ul className="grid grid-cols-2 gap-2 p-3">
+            {QUICK_LINKS.filter((q) => q.key !== "offers" || nav.hasOffers).map((q) => (
+              <li key={q.key}>
+                <Link
+                  href={q.url}
+                  onClick={close}
+                  className={
+                    q.key === "offers"
+                      ? "flex min-h-12 items-center gap-2 rounded-md border border-sale/30 bg-sale-soft px-3 text-sm font-semibold text-sale"
+                      : "flex min-h-12 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold hover:border-brand hover:text-brand"
+                  }
+                >
+                  {q.key === "offers" ? <IconPercent size={18} /> : q.key === "all" ? <IconBookOpen size={18} className="text-brand" /> : q.key === "new" ? <IconSpark size={18} className="text-brand" /> : <IconStar size={18} className="text-star" />}
+                  {q.label}
+                </Link>
+              </li>
+            ))}
+            <li>
+              <Link href="/my-list" onClick={close} className="flex min-h-12 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold hover:border-brand hover:text-brand">
+                <IconHeart size={18} className="text-sale" /> My List
+              </Link>
+            </li>
+            <li>
+              <Link href="/how-to-order" onClick={close} className="flex min-h-12 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold hover:border-brand hover:text-brand">
+                <IconTruck size={18} className="text-brand" /> How to order
+              </Link>
+            </li>
           </ul>
           {nav.categories.length > 0 && (
             <Group title="Categories">
@@ -76,7 +101,7 @@ export function MobileHeaderTools({ nav, position }: { nav: HeaderNav; position:
           {nav.collections.length > 0 && (
             <Group title="Collections">
               {nav.collections.map((c) => (
-                <Item key={c.url} item={c} onPick={close} />
+                <Item key={c.url} item={{ ...c, icon: c.icon ?? "layers" }} onPick={close} />
               ))}
             </Group>
           )}
@@ -104,8 +129,9 @@ function Item({ item, onPick }: { item: NavItem; onPick: () => void }) {
   return (
     <li>
       <Link href={item.url} onClick={onPick} className="flex min-h-12 items-center gap-3 px-4 text-base hover:bg-muted">
-        {item.icon && <CategoryIcon name={item.icon} size={18} className="text-brand" />}
+        {item.icon === "layers" ? <IconLayers size={18} className="text-brand" /> : item.icon ? <CategoryIcon name={item.icon} size={18} className="text-brand" /> : null}
         <span className="flex-1">{item.label}</span>
+        {item.count != null && <span className="text-sm text-text-3 tnum">{item.count}</span>}
         <IconChevronRight size={16} className="text-text-3" />
       </Link>
     </li>

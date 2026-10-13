@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { announcePreviewChange } from "./preview-panel";
 import { useRouter } from "next/navigation";
 import { BANNER } from "@/config/limits";
 import { MEDIA_FOLDERS } from "@/config/storage";
@@ -29,6 +30,7 @@ export function BannerEditor({ banner }: { banner: BannerRow | null }) {
     text_color: banner?.text_color ?? "#ffffff",
     image_desktop_path: banner?.image_desktop_path ?? null,
     image_mobile_path: banner?.image_mobile_path ?? null,
+    overlay_text: banner?.overlay_text ?? false,
     is_active: banner?.is_active ?? true,
     start_at: banner?.start_at ?? null,
     end_at: banner?.end_at ?? null,
@@ -99,6 +101,7 @@ export function BannerEditor({ banner }: { banner: BannerRow | null }) {
                   }
                   setOpen(false);
                   router.refresh();
+                  announcePreviewChange();
                 })
               }
             >
@@ -114,8 +117,17 @@ export function BannerEditor({ banner }: { banner: BannerRow | null }) {
             <p className="field-label">Preview</p>
             <div className="relative aspect-[16/5] overflow-hidden rounded-md border border-line" style={{ background: v.bg_color, color: v.text_color }}>
               {hasImage ? (
-                // eslint-disable-next-line @next/next/no-img-element -- admin preview
-                <img src={mediaUrl(v.image_desktop_path ?? v.image_mobile_path)!} alt="" className="h-full w-full object-cover" />
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- admin preview */}
+                  <img src={mediaUrl(v.image_desktop_path ?? v.image_mobile_path)!} alt="" className="h-full w-full object-cover" />
+                  {v.overlay_text && (
+                    <div className="absolute inset-0 flex flex-col justify-center bg-gradient-to-r from-black/65 via-black/35 to-transparent px-5">
+                      <p className="text-lg font-bold">{v.title || "Title"}</p>
+                      {v.subtitle && <p className="mt-1 line-clamp-2 text-sm opacity-90">{v.subtitle}</p>}
+                      {v.button_label && <span className="mt-2 inline-flex w-fit rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-brand-ink">{v.button_label}</span>}
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="flex h-full flex-col justify-center px-5">
                   <p className="text-lg font-bold">{v.title || "Title"}</p>
@@ -154,7 +166,7 @@ export function BannerEditor({ banner }: { banner: BannerRow | null }) {
             <Field label="Image description (alt text)" htmlFor="bn-alt" error={errors.alt_text} className="sm:col-span-2">
               <input id="bn-alt" className="input" value={v.alt_text} onChange={(e) => set("alt_text", e.target.value)} />
             </Field>
-            <Field label="Title" htmlFor="bn-title" hint={hasImage ? "Not shown when an image is set" : undefined} error={errors.title}>
+            <Field label="Title" htmlFor="bn-title" hint={hasImage && !v.overlay_text ? "Turn on “Text on the image” to show it" : undefined} error={errors.title}>
               <input id="bn-title" className="input" value={v.title} onChange={(e) => set("title", e.target.value)} />
             </Field>
             <Field label="Button label" htmlFor="bn-btn" error={errors.button_label}>
@@ -185,7 +197,18 @@ export function BannerEditor({ banner }: { banner: BannerRow | null }) {
               <input id="bn-end" type="datetime-local" className="input" value={v.end} onChange={(e) => set("end", e.target.value)} />
             </Field>
           </div>
-          <Toggle id="bn-active" label="Active" checked={Boolean(v.is_active)} onChange={(c) => set("is_active", c)} />
+          <div className="flex flex-wrap gap-x-8 gap-y-3">
+            <Toggle id="bn-active" label="Active" checked={Boolean(v.is_active)} onChange={(c) => set("is_active", c)} />
+            {hasImage && (
+              <Toggle
+                id="bn-overlay"
+                label="Text on the image"
+                hint="Shows the title, subtitle and button over the photo"
+                checked={Boolean(v.overlay_text)}
+                onChange={(c) => set("overlay_text", c)}
+              />
+            )}
+          </div>
         </div>
       </Dialog>
     </>

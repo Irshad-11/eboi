@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { announcePreviewChange } from "./preview-panel";
 import { useRouter } from "next/navigation";
 import { Dialog } from "@/components/ui/dialog";
 import { IconTrash } from "@/components/icons";
@@ -54,6 +55,7 @@ export function DeleteButton({ label, consequence, action, redirectTo, compact }
                   setOpen(false);
                   if (redirectTo) router.replace(redirectTo);
                   router.refresh();
+                  announcePreviewChange();
                 })
               }
             >

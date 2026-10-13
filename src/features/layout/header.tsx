@@ -1,17 +1,16 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/wordmark";
-import { IconWhatsApp } from "@/components/icons";
+import { CategoryIcon, IconChevronDown, IconLayers, IconMenu, IconPercent, IconTruck, IconWhatsApp } from "@/components/icons";
 import { whatsappLink } from "@/features/whatsapp/message";
 import { ListCountLink } from "@/features/my-list/list-count";
 import { SearchBox } from "./search-box";
 import { MobileHeaderTools } from "./mobile-menu";
-import type { HeaderNav } from "./nav";
+import { QUICK_LINKS, type HeaderNav, type NavItem } from "./nav";
 
 type Props = { nav: HeaderNav; whatsappNumber: string; siteName: string };
 
 /** Sticky store header: logo, search, WhatsApp, My List; category row below on desktop. */
 export function Header({ nav, whatsappNumber, siteName }: Props) {
-  const row = [...nav.categories, ...nav.collections, ...nav.links];
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85">
@@ -39,24 +38,122 @@ export function Header({ nav, whatsappNumber, siteName }: Props) {
           </div>
         </div>
       </header>
-      {row.length > 0 && (
-        <nav aria-label="Categories" className="hidden border-b border-line bg-white lg:block">
-          <ul className="container-x scrollbar-none relative flex items-center gap-1 overflow-x-auto">
-            <li>
-              <Link href="/shop" className="inline-flex h-11 items-center px-3 text-sm font-semibold whitespace-nowrap hover:text-brand">
-                All books
-              </Link>
-            </li>
-            {row.map((item) => (
-              <li key={`${item.url}-${item.label}`}>
-                <Link href={item.url} className="inline-flex h-11 items-center px-3 text-sm whitespace-nowrap text-text-2 hover:text-brand">
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )}
+      <DesktopNav nav={nav} />
     </>
+  );
+}
+
+/**
+ * Desktop navigation row: a Categories menu (green), the shop shortcuts,
+ * Offers in red, a Collections menu, admin-pinned items and links. Menus
+ * open on hover and on keyboard focus, with no script.
+ */
+function DesktopNav({ nav }: { nav: HeaderNav }) {
+  const quick = QUICK_LINKS.filter((q) => q.key !== "offers" || nav.hasOffers);
+  return (
+    <nav aria-label="Shop" className="relative z-30 hidden border-b border-line bg-white lg:block">
+      <ul className="container-x flex h-12 items-center gap-1">
+        {nav.categories.length > 0 && (
+          <li className="group relative mr-2 shrink-0">
+            <button
+              type="button"
+              aria-haspopup="true"
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-brand px-3 text-sm font-semibold text-white hover:bg-brand-hover"
+            >
+              <IconMenu size={18} />
+              Categories
+              <IconChevronDown size={16} className="transition-transform group-focus-within:rotate-180 group-hover:rotate-180" />
+            </button>
+            <Dropdown wide>
+              <ul className="grid grid-cols-3 gap-1">
+                {nav.categories.map((c) => (
+                  <li key={c.url}>
+                    <MenuLink item={c} icon={<CategoryIcon name={c.icon ?? "book"} size={18} />} />
+                  </li>
+                ))}
+              </ul>
+              <Link href="/shop" className="mt-2 flex items-center justify-center rounded-md border-t border-line pt-3 text-sm font-semibold text-brand hover:underline">
+                Browse all books
+              </Link>
+            </Dropdown>
+          </li>
+        )}
+        {quick.map((q) => (
+          <li key={q.key} className="shrink-0">
+            <Link
+              href={q.url}
+              className={
+                q.key === "offers"
+                  ? "inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-semibold whitespace-nowrap text-sale hover:bg-sale-soft"
+                  : "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium whitespace-nowrap text-text hover:bg-muted hover:text-brand"
+              }
+            >
+              {q.key === "offers" && <IconPercent size={16} />}
+              {q.label}
+            </Link>
+          </li>
+        ))}
+        {nav.collections.length > 0 && (
+          <li className="group relative shrink-0">
+            <button
+              type="button"
+              aria-haspopup="true"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-medium whitespace-nowrap hover:bg-muted hover:text-brand"
+            >
+              Collections
+              <IconChevronDown size={16} className="transition-transform group-focus-within:rotate-180 group-hover:rotate-180" />
+            </button>
+            <Dropdown>
+              <ul className="grid gap-1">
+                {nav.collections.map((c) => (
+                  <li key={c.url}>
+                    <MenuLink item={c} icon={<IconLayers size={18} />} />
+                  </li>
+                ))}
+              </ul>
+            </Dropdown>
+          </li>
+        )}
+        {[...nav.pinned, ...nav.links].length > 0 && (
+          <li className="flex min-w-0 flex-1 items-center">
+            <span className="mx-1 h-5 w-px shrink-0 bg-line-2" aria-hidden="true" />
+            {/* Pinned shortcuts scroll sideways instead of squeezing the row. */}
+            <ul className="scrollbar-none relative flex min-w-0 items-center gap-1 overflow-x-auto [mask-image:linear-gradient(to_right,#000_calc(100%-2rem),transparent)] pr-6">
+              {[...nav.pinned, ...nav.links].map((item) => (
+                <li key={`${item.url}-${item.label}`} className="shrink-0">
+                  <Link href={item.url} className="inline-flex h-9 items-center rounded-md px-2.5 text-sm whitespace-nowrap text-text-2 hover:bg-muted hover:text-brand">
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </li>
+        )}
+        <li className="ml-auto shrink-0">
+          <Link href="/how-to-order" className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-sm whitespace-nowrap text-text-2 hover:bg-muted hover:text-brand">
+            <IconTruck size={16} />
+            How to order
+          </Link>
+        </li>
+      </ul>
+    </nav>
+  );
+}
+
+function Dropdown({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
+  return (
+    <div className="invisible absolute top-full left-0 z-50 pt-2 opacity-0 transition-[opacity,visibility] duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+      <div className={`rounded-lg border border-line bg-white p-2 shadow-lg ${wide ? "w-[40rem]" : "w-72"}`}>{children}</div>
+    </div>
+  );
+}
+
+function MenuLink({ item, icon }: { item: NavItem; icon: React.ReactNode }) {
+  return (
+    <Link href={item.url} className="flex min-h-11 items-center gap-3 rounded-md px-2.5 text-sm hover:bg-brand-soft hover:text-brand-ink">
+      <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-brand">{icon}</span>
+      <span className="min-w-0 flex-1 truncate font-medium">{item.label}</span>
+      {item.count != null && <span className="text-xs text-text-3 tnum">{item.count}</span>}
+    </Link>
   );
 }

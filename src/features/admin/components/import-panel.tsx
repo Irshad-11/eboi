@@ -128,7 +128,7 @@ export function ImportPanel() {
             <input type="file" accept="application/json,.json" aria-label="Book JSON file" onChange={(e) => onJson(e.target.files?.[0])} className={fileClass} />
           </Step>
           <Step n={2} title="Cover (optional)" hint={hints.cover ? `The JSON expects “${hints.cover}”.` : "JPG or PNG, 2:3."}>
-            <input type="file" accept="image/jpeg,image/png" aria-label="Cover image" disabled={Array.isArray(json)} onChange={(e) => setCover(e.target.files?.[0] ?? null)} className={fileClass} />
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" aria-label="Cover image" disabled={Array.isArray(json)} onChange={(e) => setCover(e.target.files?.[0] ?? null)} className={fileClass} />
             {mismatch(hints.cover, cover) && <p className="mt-1.5 text-sm text-warn">File name differs from the JSON. Check it is the right cover.</p>}
           </Step>
           <Step n={3} title="Preview PDF (optional)" hint={hints.preview ? `The JSON expects “${hints.preview}”.` : "The first pages only."}>

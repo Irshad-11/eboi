@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { skipOptimizer } from "@/lib/media";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { langOf } from "@/lib/bangla";
@@ -30,7 +31,7 @@ export function CompactCard({
       <Link href={`/books/${book.slug}`} onClick={onNavigate} data-book-id={book.id} className="shrink-0" tabIndex={-1} aria-hidden="true">
         <div className={cn("cover-frame", dense ? "w-10" : "w-14")}>
           {book.coverUrl ? (
-            <Image src={book.coverUrl} alt="" fill sizes={dense ? "40px" : "56px"} />
+            <Image src={book.coverUrl} alt="" fill sizes={dense ? "40px" : "56px"} unoptimized={skipOptimizer(book.coverUrl)} />
           ) : (
             <div className="absolute inset-0 bg-brand" />
           )}

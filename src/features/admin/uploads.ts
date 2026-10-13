@@ -31,7 +31,7 @@ function imageSize(file: File): Promise<{ w: number; h: number } | null> {
 export type CoverCheck = { ok: true; warning?: string } | { ok: false; error: string };
 
 export async function checkCover(file: File): Promise<CoverCheck> {
-  if (!(COVER.mimeTypes as readonly string[]).includes(file.type)) return { ok: false, error: "Cover must be a JPG or PNG." };
+  if (!(COVER.mimeTypes as readonly string[]).includes(file.type)) return { ok: false, error: "Cover must be a JPG, PNG, WebP or GIF." };
   if (file.size > COVER.maxBytes) return { ok: false, error: `Cover is ${mb(file.size)}. The limit is ${mb(COVER.maxBytes)}.` };
   const dims = await imageSize(file);
   if (!dims) return { ok: false, error: "That image could not be read." };
@@ -63,7 +63,7 @@ export async function checkPreview(file: File): Promise<PreviewCheck> {
 }
 
 export async function checkMediaImage(file: File): Promise<string | null> {
-  if (!(MEDIA.mimeTypes as readonly string[]).includes(file.type)) return "Use a JPG, PNG or WebP image.";
+  if (!(MEDIA.mimeTypes as readonly string[]).includes(file.type)) return "Use a JPG, PNG, WebP or GIF image.";
   if (file.size > MEDIA.maxBytes) return `Image is ${mb(file.size)}. The limit is ${mb(MEDIA.maxBytes)}.`;
   if (!(await imageSize(file))) return "That image could not be read.";
   return null;

@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { SECTIONS } from "@/config/analytics";
 import { HOME } from "@/config/site";
-import { mediaUrl } from "@/lib/media";
+import { mediaUrl, skipOptimizer } from "@/lib/media";
 import { CategoryIcon } from "@/components/icons";
 import { SectionHead } from "@/components/section-head";
 import { TrackSection } from "@/features/analytics/track-section";
@@ -30,7 +30,7 @@ export function CategoryShortcuts({ categories }: { categories: CategoryItem[] }
                 className="group flex flex-col items-center gap-2 rounded-lg p-2 text-center hover:bg-white md:h-full md:border md:border-line md:bg-white md:px-2 md:py-3 md:transition-shadow md:hover:border-brand md:hover:shadow-md lg:px-3 lg:py-4"
               >
                 <span className="relative flex size-16 items-center justify-center overflow-hidden rounded-full border border-line bg-white text-brand transition-colors group-hover:border-brand group-hover:bg-brand-soft sm:size-18">
-                  {img ? <Image src={img} alt="" fill sizes="72px" className="object-cover" /> : <CategoryIcon name={c.icon} size={26} />}
+                  {img ? <Image src={img} alt="" fill sizes="72px" className="object-cover" unoptimized={skipOptimizer(img)} /> : <CategoryIcon name={c.icon} size={26} />}
                 </span>
                 <span className="line-clamp-2 text-sm leading-tight font-medium group-hover:text-brand lg:text-base">{c.name}</span>
                 <span className="hidden text-sm text-text-3 md:block">

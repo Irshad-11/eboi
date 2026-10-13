@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { announcePreviewChange } from "./preview-panel";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { COVER, PREVIEW } from "@/config/limits";
@@ -10,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format";
 import type { BookRow } from "@/lib/supabase/database.types";
 import { coverUrl } from "@/features/books/cover";
+import { isValidImageUrl } from "@/lib/media";
 import { bookInputSchema, type BookFormValues } from "@/features/books/schema";
 import { IconExternal, IconPlus, IconTrash, IconUpload } from "@/components/icons";
 import { discardUploads, saveBook, type ReviewInput } from "../actions/books";
@@ -131,13 +133,17 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
   const [cover, setCover] = useState<FileState<Awaited<ReturnType<typeof checkCover>>>>(null);
   const [preview, setPreview] = useState<FileState<Awaited<ReturnType<typeof checkPreview>>>>(null);
   const [removeCover, setRemoveCover] = useState(false);
+  // A pasted cover link instead of an upload.
+  const [coverLink, setCoverLink] = useState(book?.cover_path && /^https?:\/\//i.test(book.cover_path) ? book.cover_path : "");
+  const linkChanged = coverLink.trim() !== "" && coverLink.trim() !== (book?.cover_path ?? "");
   const [removePreview, setRemovePreview] = useState(false);
   const set = <K extends keyof State>(k: K, v: State[K]) => setS((p) => ({ ...p, [k]: v }));
 
   const coverSrc = useMemo(() => {
     if (cover?.file) return URL.createObjectURL(cover.file);
+    if (linkChanged && isValidImageUrl(coverLink.trim())) return coverLink.trim();
     return book && !removeCover ? coverUrl(book) : null;
-  }, [cover, book, removeCover]);
+  }, [cover, book, removeCover, linkChanged, coverLink]);
 
   const values = (): BookFormValues => {
     const row = seoToRow(seo);
@@ -185,6 +191,7 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
     const fe: Record<string, string> = {};
     if (!check.success) for (const i of check.error.issues) fe[String(i.path[0])] ??= i.message;
     if (cover && !cover.check.ok) fe.cover = cover.check.error;
+    if (!cover && linkChanged && !isValidImageUrl(coverLink.trim())) fe.cover = "Paste a full https:// image link.";
     if (preview && !preview.check.ok) fe.preview = preview.check.error;
     reviews.forEach((r, i) => {
       if (!r.author_name.trim()) fe[`review-${i}`] = "Add a name";
@@ -214,7 +221,7 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
         isNew: !book,
         values: v,
         collectionIds: s.collections,
-        cover: uploaded.cover ? { path: uploaded.cover } : removeCover ? { remove: true } : null,
+        cover: uploaded.cover ? { path: uploaded.cover } : linkChanged ? { path: coverLink.trim() } : removeCover ? { remove: true } : null,
         preview: uploaded.preview ? { path: uploaded.preview } : removePreview ? { remove: true } : null,
         thumbs: uploaded.thumbs ?? null,
         ogImage: ogChanged ? seo.og_image_path : undefined,
@@ -232,6 +239,7 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
       setNotice({ tone: "ok", text: res.message ?? "Saved." });
       if (!book) router.replace(`/admin/books/${res.data.id}`);
       else router.refresh();
+      announcePreviewChange();
     } catch (err) {
       await discardUploads(id, uploaded).catch(() => undefined);
       setNotice({ tone: "error", text: err instanceof Error ? err.message : "Something went wrong. Nothing was saved." });
@@ -491,7 +499,26 @@ export function BookForm({ book, collections, memberOf, offers, categories, lang
                     setRemoveCover(false);
                   }}
                 />
-                <p className="field-hint mt-0">JPG/PNG, 2:3, ≥{COVER.minWidth}px wide, ≤2 MB</p>
+                <p className="field-hint mt-0">JPG, PNG, WebP or GIF, 2:3, ≥{COVER.minWidth}px wide, ≤4 MB</p>
+                <div>
+                  <label htmlFor="b-cover-link" className="text-sm font-medium text-text-2">
+                    Or paste an image link
+                  </label>
+                  <input
+                    id="b-cover-link"
+                    type="url"
+                    inputMode="url"
+                    className="input mt-1 h-10 min-h-10 text-sm"
+                    placeholder="https://…"
+                    value={coverLink}
+                    disabled={Boolean(cover)}
+                    onChange={(e) => {
+                      setCoverLink(e.target.value);
+                      setRemoveCover(false);
+                    }}
+                  />
+                  {linkChanged && !isValidImageUrl(coverLink.trim()) && <p className="field-error">Paste a full https:// image link.</p>}
+                </div>
                 {cover && !cover.check.ok && <p className="field-error">{cover.check.error}</p>}
                 {cover?.check.ok && cover.check.warning && <p className="field-hint text-warn">{cover.check.warning}</p>}
                 {err("cover") && <p className="field-error">{err("cover")}</p>}

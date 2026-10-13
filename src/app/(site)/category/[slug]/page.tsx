@@ -6,6 +6,7 @@ import { parseShopParams } from "@/features/books/catalog";
 import { getCategories } from "@/features/categories/queries";
 import { getSettings } from "@/features/settings/queries";
 import { CatalogView } from "@/features/shop/catalog-view";
+import { CategoryHeader } from "@/features/shop/listing-headers";
 import { pageMetadata } from "@/features/seo/metadata";
 import { Breadcrumbs } from "@/features/seo/breadcrumbs";
 import { JsonLd, itemListJsonLd } from "@/features/seo/jsonld";
@@ -54,6 +55,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         symbol={settings.currency_symbol}
         section={SECTIONS.categoryGrid}
         hideCategory
+        header={<CategoryHeader category={cat} all={cats} />}
       />
     </>
   );

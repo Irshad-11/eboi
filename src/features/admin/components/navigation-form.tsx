@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { announcePreviewChange } from "./preview-panel";
 import { useRouter } from "next/navigation";
 import type { FooterColumn, NavLink } from "@/features/settings/schema";
 import { saveNavigation } from "../actions/settings";
@@ -38,7 +39,10 @@ export function NavigationForm(props: Props) {
           const res = await saveNavigation({ header_links: header, footer_columns: footer, social_links: social });
           const detail = !res.ok && res.fieldErrors ? ` ${Object.values(res.fieldErrors)[0] ?? ""}` : "";
           setNotice(res.ok ? { tone: "ok", text: res.message ?? "Saved." } : { tone: "error", text: res.error + detail });
-          if (res.ok) router.refresh();
+          if (res.ok) {
+              router.refresh();
+              announcePreviewChange();
+            }
         });
       }}
     >

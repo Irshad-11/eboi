@@ -6,10 +6,10 @@ import { IconChevronDown } from "@/components/icons";
 
 export type Tab = { id: string; label: string; content: ReactNode };
 
-/** Tabs on desktop, an accordion on phones. Content is server-rendered. */
+/** Tabs on desktop; on phones every section starts open (an accordion the reader can fold). */
 export function ProductTabs({ tabs }: { tabs: Tab[] }) {
   const [active, setActive] = useState(tabs[0]?.id);
-  const [openIds, setOpenIds] = useState<string[]>(tabs[0] ? [tabs[0].id] : []);
+  const [openIds, setOpenIds] = useState<string[]>(tabs.map((t) => t.id));
   if (!tabs.length) return null;
 
   return (

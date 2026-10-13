@@ -3,22 +3,23 @@
 import Link from "next/link";
 import { useState } from "react";
 import { SECTIONS } from "@/config/analytics";
-import { publicEnv } from "@/lib/env";
 import { formatPrice } from "@/lib/format";
-import { IconClose, IconHeart, IconWhatsApp } from "@/components/icons";
+import { IconClose, IconHeart, IconTrash, IconWhatsApp } from "@/components/icons";
 import { track } from "@/features/analytics/client";
-import { useShop } from "@/features/layout/shop-context";
+import { useShop, useSiteUrl } from "@/features/layout/shop-context";
 import { CompactCard } from "@/features/books/components/compact-card";
 import type { BookLite } from "@/features/books/types";
 import { buildListMessage } from "@/features/whatsapp/message";
 import { OrderDialog } from "@/features/whatsapp/order-dialog";
-import { removeFromList, useMyList } from "./store";
+import { addToList, clearList, removeFromList, useMyList } from "./store";
 import { useBooksByIds } from "./use-books";
 
 /** My List: saved books, sent together in one WhatsApp message. Not a cart. */
 export function MyListView() {
   const ids = useMyList();
   const { books, loading } = useBooksByIds(ids);
+  // The list just cleared, so one tap can bring it back.
+  const [undo, setUndo] = useState<string[] | null>(null);
 
   if (!ids.length) {
     return (
@@ -26,10 +27,24 @@ export function MyListView() {
         <span className="inline-flex size-12 items-center justify-center rounded-full bg-sale-soft text-sale">
           <IconHeart size={22} />
         </span>
-        <p className="mt-3 text-md font-semibold">Your list is empty</p>
-        <Link href="/shop" className="btn btn-primary mt-4">
-          Browse books
-        </Link>
+        <p className="mt-3 text-md font-semibold">{undo ? "Your list was cleared" : "Your list is empty"}</p>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {undo && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                [...undo].reverse().forEach(addToList);
+                setUndo(null);
+              }}
+            >
+              Undo
+            </button>
+          )}
+          <Link href="/shop" className="btn btn-primary">
+            Browse books
+          </Link>
+        </div>
       </div>
     );
   }
@@ -42,15 +57,25 @@ export function MyListView() {
       </div>
     );
   }
-  return <ListWithSend books={books} removable />;
+  return (
+    <ListWithSend
+      books={books}
+      removable
+      onClear={() => {
+        setUndo(ids);
+        clearList();
+      }}
+    />
+  );
 }
 
-export function ListWithSend({ books, removable = false }: { books: BookLite[]; removable?: boolean }) {
+export function ListWithSend({ books, removable = false, onClear }: { books: BookLite[]; removable?: boolean; onClear?: () => void }) {
   const shop = useShop();
+  const siteUrl = useSiteUrl();
   const [open, setOpen] = useState(false);
   const total = books.reduce((s, b) => s + b.pricing.final, 0);
   const before = books.reduce((s, b) => s + (b.pricing.was ?? b.pricing.final), 0);
-  const message = buildListMessage(shop.whatsapp_list_template, books, shop.currency_symbol, publicEnv.siteUrl);
+  const message = buildListMessage(shop.whatsapp_list_template, books, shop.currency_symbol, siteUrl);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
@@ -105,6 +130,12 @@ export function ListWithSend({ books, removable = false }: { books: BookLite[]; 
           <IconWhatsApp size={18} />
           Order all on WhatsApp
         </button>
+        {onClear && (
+          <button type="button" className="btn btn-ghost btn-block mt-2 text-sale hover:bg-sale-soft hover:text-sale" onClick={onClear}>
+            <IconTrash size={16} />
+            Clear list
+          </button>
+        )}
       </aside>
 
       <OrderDialog open={open} onClose={() => setOpen(false)} message={message} bookIds={books.map((b) => b.id)} section={SECTIONS.myList} title="Order your list" />

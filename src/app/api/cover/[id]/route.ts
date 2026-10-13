@@ -22,6 +22,8 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/cover/[id]">
 
   const isPublic = book.status === "published";
   if (!isPublic && !(await getAdminUser())) return notFound();
+  // A pasted cover link: send the visitor to the image itself.
+  if (/^https?:\/\//i.test(book.cover_path)) return NextResponse.redirect(book.cover_path, 302);
 
   const { data: file, error } = await supabase.storage.from(BUCKETS.covers).download(book.cover_path);
   if (error || !file) return notFound();
@@ -37,7 +39,9 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/cover/[id]">
 
   return new NextResponse(file.stream(), {
     headers: {
-      "Content-Type": file.type || (book.cover_path.endsWith(".png") ? "image/png" : "image/jpeg"),
+      "Content-Type":
+        file.type ||
+        (book.cover_path.endsWith(".png") ? "image/png" : book.cover_path.endsWith(".webp") ? "image/webp" : book.cover_path.endsWith(".gif") ? "image/gif" : "image/jpeg"),
       "Content-Length": String(file.size),
       "Cache-Control": cache,
       "X-Content-Type-Options": "nosniff",

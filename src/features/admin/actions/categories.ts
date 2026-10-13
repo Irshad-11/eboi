@@ -14,7 +14,7 @@ const categorySchema = z.object({
   name: z.string().trim().min(1, "Add a name").max(60),
   slug: z.string().trim().toLowerCase().regex(SLUG_PATTERN, "Lowercase letters, numbers and dashes").max(80),
   icon: z.string().trim().max(20).default("book"),
-  image_path: z.string().max(200).nullable(),
+  image_path: z.string().max(1000).nullable(),
   sort_order: z.coerce.number().int().min(-1000).max(1000).default(0),
   show_in_nav: z.boolean(),
   show_on_home: z.boolean(),

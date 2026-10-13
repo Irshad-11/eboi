@@ -94,6 +94,7 @@ const SECTION_LABELS: Record<string, string> = {
   [SECTIONS.detailGallery]: "Book page: gallery",
   [SECTIONS.detailTabs]: "Book page: tabs",
   [SECTIONS.detailReviews]: "Book page: reviews",
+  [SECTIONS.searchSuggest]: "Search box (typed, not submitted)",
   [SECTIONS.frontPage]: "Home: front page",
   [SECTIONS.newest]: "Home: newest book",
   [SECTIONS.offers]: "Home: offers",

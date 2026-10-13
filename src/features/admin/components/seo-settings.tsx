@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { announcePreviewChange } from "./preview-panel";
 import { useRouter } from "next/navigation";
 import { MEDIA_FOLDERS } from "@/config/storage";
 import { publicEnv } from "@/lib/env";
@@ -52,7 +53,10 @@ export function SiteSeoForm({ settings }: { settings: SiteSettings }) {
             });
             setErrors(res.ok ? {} : (res.fieldErrors ?? {}));
             setNotice(res.ok ? { tone: "ok", text: res.message ?? "Saved." } : { tone: "error", text: res.error });
-            if (res.ok) router.refresh();
+            if (res.ok) {
+              router.refresh();
+              announcePreviewChange();
+            }
           });
         }}
       >
@@ -149,7 +153,10 @@ function PageSeoEditor({ page, row, titleTemplate }: { page: PageInfo; row: Page
             const res = await savePageSeo(page.key, seoToRow(seo));
             setErrors(res.ok ? {} : (res.fieldErrors ?? {}));
             setNotice(res.ok ? { tone: "ok", text: res.message ?? "Saved." } : { tone: "error", text: res.error });
-            if (res.ok) router.refresh();
+            if (res.ok) {
+              router.refresh();
+              announcePreviewChange();
+            }
           })
         }
       >
@@ -210,6 +217,7 @@ export function RedirectsManager({ redirects }: { redirects: RedirectRow[] }) {
                   if (res.ok) {
                     setEdit(null);
                     router.refresh();
+                    announcePreviewChange();
                   }
                 })
               }
@@ -248,6 +256,7 @@ export function RedirectsManager({ redirects }: { redirects: RedirectRow[] }) {
                     const res = await deleteRedirect(r.id);
                     setNotice(res.ok ? { tone: "ok", text: res.message ?? "Deleted." } : { tone: "error", text: res.error });
                     router.refresh();
+                    announcePreviewChange();
                   })
                 }
               >

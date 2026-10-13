@@ -4,36 +4,47 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { IconChevronRight, IconClose } from "@/components/icons";
 
-/** Top notice bar. Dismissal is remembered per message text in this browser. */
-export function AnnouncementBar({ text, link, dismissible }: { text: string; link: string; dismissible: boolean }) {
-  const key = `eboi_notice_${hash(text)}`;
+type Props = { text: string; link: string; dismissible: boolean; bg: string; fg: string; image: string | null };
+
+/**
+ * Top notice bar for offers and news. Colours are set in the admin (red by
+ * default); an optional image or GIF sits beside the text, or fills the bar
+ * when there is no text. Dismissal is remembered per message in this browser.
+ */
+export function AnnouncementBar({ text, link, dismissible, bg, fg, image }: Props) {
+  const key = `eboi_notice_${hash(text + (image ?? ""))}`;
   const [dismissed, setHidden] = useState(false);
   const stored = useSyncExternalStore(noSubscribe, () => readFlag(key), () => false);
 
   if (dismissed || stored) return null;
 
+  const imageOnly = Boolean(image) && !text;
   const content = (
     <>
-      <span>{text}</span>
-      {link && <IconChevronRight size={14} className="shrink-0" />}
+      {image && (
+        // eslint-disable-next-line @next/next/no-img-element -- admin-set image or GIF of any size; shown as it is
+        <img src={image} alt={imageOnly ? "Announcement" : ""} className={imageOnly ? "mx-auto max-h-14 w-auto max-w-full object-contain" : "h-6 w-auto shrink-0 rounded-sm object-contain"} />
+      )}
+      {text && <span className="font-medium">{text}</span>}
+      {link && text && <IconChevronRight size={14} className="shrink-0" />}
     </>
   );
 
   return (
-    <div className="bg-brand-ink text-white">
+    <div style={{ background: bg, color: fg }}>
       <div className={`container-x relative flex min-h-9 items-center justify-center py-1.5 text-center text-sm ${dismissible ? "pr-10 pl-10" : ""}`}>
         {link ? (
           link.startsWith("/") ? (
-            <Link href={link} className="inline-flex items-center gap-1 hover:underline">
+            <Link href={link} className="inline-flex items-center gap-2 hover:underline">
               {content}
             </Link>
           ) : (
-            <a href={link} className="inline-flex items-center gap-1 hover:underline" target="_blank" rel="noopener noreferrer">
+            <a href={link} className="inline-flex items-center gap-2 hover:underline" target="_blank" rel="noopener noreferrer">
               {content}
             </a>
           )
         ) : (
-          <p className="inline-flex items-center gap-1">{content}</p>
+          <p className="inline-flex items-center gap-2">{content}</p>
         )}
         {dismissible && (
           <button
@@ -46,7 +57,7 @@ export function AnnouncementBar({ text, link, dismissible }: { text: string; lin
                 // ignore
               }
             }}
-            className="absolute right-1 inline-flex size-8 items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white md:right-4"
+            className="absolute right-1 inline-flex size-8 items-center justify-center rounded-md opacity-80 hover:bg-black/10 hover:opacity-100 md:right-4"
             aria-label="Dismiss notice"
           >
             <IconClose size={16} />

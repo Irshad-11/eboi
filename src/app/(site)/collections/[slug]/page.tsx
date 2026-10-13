@@ -15,6 +15,7 @@ import {
 } from "@/features/collections/queries";
 import { getSettings } from "@/features/settings/queries";
 import { CatalogView } from "@/features/shop/catalog-view";
+import { CollectionHeader } from "@/features/shop/listing-headers";
 import { Breadcrumbs } from "@/features/seo/breadcrumbs";
 import { excerpt, pageMetadata } from "@/features/seo/metadata";
 import { JsonLd, itemListJsonLd } from "@/features/seo/jsonld";
@@ -85,6 +86,7 @@ export default async function CollectionPage({ params, searchParams }: Props) {
         symbol={settings.currency_symbol}
         section={`${SECTIONS.collectionGrid}:${v.slug}`}
         keepOrder
+        header={v.custom ? <CollectionHeader name={v.name} intro={v.intro} mood={v.custom.mood} books={v.books} symbol={settings.currency_symbol} /> : undefined}
       />
     </>
   );

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { adminFormOptions, adminGetBook } from "@/features/admin/queries";
 import { deleteBook } from "@/features/admin/actions/books";
+import { PreviewButton } from "@/features/admin/components/preview-panel";
 import { AdminPageHead } from "@/features/admin/components/admin-page-head";
 import { BookForm } from "@/features/admin/components/book-form";
 import { DeleteButton } from "@/features/admin/components/delete-button";
@@ -25,6 +26,7 @@ export default async function EditBookPage({ params }: { params: Promise<{ id: s
         meta={`${book.book_code} · ${book.status === "published" ? "Published" : "Draft"}${book.is_demo ? " · Demo" : ""}`}
         actions={
           <>
+            {book.status === "published" && <PreviewButton path={`/books/${book.slug}`} />}
             <Link href={`/admin/books/${book.id}/analytics`} className="btn btn-secondary btn-sm">
               <IconChart size={16} /> Analytics
             </Link>

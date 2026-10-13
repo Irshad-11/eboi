@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/cn";
-import { mediaUrl } from "@/lib/media";
+import { isExternalUrl, isValidImageUrl, mediaUrl } from "@/lib/media";
 import type { MediaFolder } from "@/config/storage";
-import { IconImage, IconTrash, IconUpload } from "@/components/icons";
+import { IconImage, IconLink, IconTrash, IconUpload } from "@/components/icons";
 import { checkMediaImage, uploadMedia } from "../uploads";
 
 type Props = {
@@ -20,13 +20,16 @@ type Props = {
 };
 
 /**
- * Picks an image and uploads it straight to the private media bucket. The
- * form then saves the new path; the server verifies the file and deletes the
- * one it replaced.
+ * An image field: upload a file (JPG, PNG, WebP or GIF) straight to the
+ * private media bucket, or paste a link to an image hosted anywhere. The
+ * form saves the path or link; the server verifies it and deletes a file it
+ * replaced.
  */
 export function ImageUpload({ id, label, folder, ownerId, value, onChange, aspect = "16 / 9", hint }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [urlMode, setUrlMode] = useState(isExternalUrl(value));
+  const [url, setUrl] = useState<string>(isExternalUrl(value) && value ? value : "");
   const src = mediaUrl(value);
 
   return (
@@ -51,7 +54,7 @@ export function ImageUpload({ id, label, folder, ownerId, value, onChange, aspec
           <input
             id={id}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             className="sr-only"
             onChange={async (e) => {
               const file = e.target.files?.[0];
@@ -70,14 +73,66 @@ export function ImageUpload({ id, label, folder, ownerId, value, onChange, aspec
               }
             }}
           />
+          <button type="button" className="btn btn-ghost btn-sm" aria-expanded={urlMode} onClick={() => setUrlMode((m) => !m)}>
+            <IconLink size={16} />
+            Use image link
+          </button>
           {value && (
-            <button type="button" className="btn btn-ghost btn-sm text-sale hover:text-sale" onClick={() => onChange(null)}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm text-sale hover:text-sale"
+              onClick={() => {
+                onChange(null);
+                setUrl("");
+              }}
+            >
               <IconTrash size={16} />
               Remove
             </button>
           )}
         </div>
       </div>
+      {urlMode && (
+        <div className="mt-2 flex gap-2">
+          <label htmlFor={`${id}-url`} className="sr-only">
+            Image link for {label}
+          </label>
+          <input
+            id={`${id}-url`}
+            type="url"
+            inputMode="url"
+            className="input h-10 min-h-10 text-sm"
+            placeholder="https://… (.jpg, .png, .webp or .gif)"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.currentTarget.blur();
+              }
+            }}
+            onBlur={() => {
+              const v = url.trim();
+              if (!v) return;
+              if (!isValidImageUrl(v)) return setError("Paste a full https:// link to an image.");
+              setError(null);
+              onChange(v);
+            }}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm h-10 shrink-0"
+            onClick={() => {
+              const v = url.trim();
+              if (!isValidImageUrl(v)) return setError("Paste a full https:// link to an image.");
+              setError(null);
+              onChange(v);
+            }}
+          >
+            Use
+          </button>
+        </div>
+      )}
       {error ? <p className="field-error">{error}</p> : hint ? <p className="field-hint">{hint}</p> : null}
     </div>
   );

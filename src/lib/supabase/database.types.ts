@@ -119,6 +119,8 @@ export type BannerRow = Timestamps & {
   text_color: string;
   image_desktop_path: string | null;
   image_mobile_path: string | null;
+  /** Show the title, text and button on top of the image. */
+  overlay_text: boolean;
   sort_order: number;
   is_active: boolean;
   start_at: string | null;
@@ -224,6 +226,23 @@ export type SiteSettingsRow = {
   site_noindex: boolean;
   google_verification: string;
   bing_verification: string;
+  announcement_bg: string;
+  announcement_fg: string;
+  announcement_image: string | null;
+  hero_interval: number;
+  popup_enabled: boolean;
+  popup_title: string;
+  popup_body: string;
+  popup_image: string | null;
+  popup_button_label: string;
+  popup_link: string;
+  popup_show_latest: boolean;
+  popup_delay: number;
+  popup_autoclose: number;
+  popup_frequency: string;
+  popup_version: number;
+  features: Json;
+  trending_searches: string[];
 };
 
 /** Makes columns with database defaults optional for inserts. */

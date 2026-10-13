@@ -4,9 +4,9 @@
  * storage bucket itself (supabase/schema.sql). Change them together.
  */
 export const COVER = {
-  maxBytes: 2 * 1024 * 1024,
-  mimeTypes: ["image/jpeg", "image/png"] as const,
-  extensions: { "image/jpeg": "jpg", "image/png": "png" } as const,
+  maxBytes: 4 * 1024 * 1024,
+  mimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"] as const,
+  extensions: { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" } as const,
   minWidth: 600,
   /** Every cover is shown at 2:3. Other ratios are cropped, so warn early. */
   aspect: 2 / 3,
@@ -39,9 +39,10 @@ export const TEXT = {
 } as const;
 
 export const MEDIA = {
-  maxBytes: 3 * 1024 * 1024,
-  mimeTypes: ["image/jpeg", "image/png", "image/webp"] as const,
-  extensions: { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" } as const,
+  /** GIFs are allowed (short animations), so the limit is a little higher. */
+  maxBytes: 5 * 1024 * 1024,
+  mimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"] as const,
+  extensions: { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" } as const,
 } as const;
 
 /** Banner frames. Images are cropped to these ratios, so the slider never jumps. */

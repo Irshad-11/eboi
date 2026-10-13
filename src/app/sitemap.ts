@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { AUTO_COLLECTION_SLUGS } from "@/config/site";
 import { absoluteUrl } from "@/lib/env";
+import { absoluteImage } from "@/lib/media";
 import type { PageKey } from "@/lib/supabase/database.types";
 import { getPublishedBooks } from "@/features/books/queries";
 import { coverUrl } from "@/features/books/cover";
@@ -55,7 +56,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: b.updated_at,
       changeFrequency: "weekly" as const,
       priority: 0.8,
-      ...(cover ? { images: [absoluteUrl(cover)] } : {}),
+      ...(cover ? { images: [absoluteImage(cover, absoluteUrl("").replace(/\/$/, ""))] } : {}),
     };
   });
 

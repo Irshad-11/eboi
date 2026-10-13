@@ -1,10 +1,11 @@
 import { SITE } from "@/config/site";
-import type { HomeSection, SiteSettings } from "./schema";
+import { FEATURES, type FeatureFlags, type HomeSection, type SiteSettings } from "./schema";
 
 export const DEFAULT_GOOGLE_VERIFICATION = "hsdg_1mNbuEtI8Q199rubZFV3AF54vBH2k6L7A1Kxk0";
 
 export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
   { type: "hero", enabled: true },
+  { type: "trust", enabled: true },
   { type: "categories", enabled: true },
   { type: "offers", enabled: true },
   { type: "newest", enabled: true },
@@ -13,9 +14,13 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
   { type: "collections", enabled: true },
   { type: "collection_tiles", enabled: false },
   { type: "recent", enabled: true },
+  { type: "stats", enabled: true },
+  { type: "testimonials", enabled: true },
   { type: "journey", enabled: true },
   { type: "faq", enabled: true },
 ];
+
+export const DEFAULT_FEATURES = Object.fromEntries(Object.entries(FEATURES).map(([k, f]) => [k, f.default])) as FeatureFlags;
 
 /**
  * Used before Supabase is connected, and as a fallback for any value the
@@ -34,6 +39,23 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   announcement_link: "",
   announcement_active: false,
   announcement_dismissible: true,
+  announcement_bg: "#d42d2d",
+  announcement_fg: "#ffffff",
+  announcement_image: null,
+  hero_interval: 5,
+  popup_enabled: false,
+  popup_title: "",
+  popup_body: "",
+  popup_image: null,
+  popup_button_label: "",
+  popup_link: "",
+  popup_show_latest: true,
+  popup_delay: 2,
+  popup_autoclose: 0,
+  popup_frequency: "session",
+  popup_version: 0,
+  features: DEFAULT_FEATURES,
+  trending_searches: [],
   payment_methods: [
     { label: "bKash", number: "", note: "Send Money" },
     { label: "Nagad", number: "", note: "Send Money" },

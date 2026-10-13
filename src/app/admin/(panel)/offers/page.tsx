@@ -3,6 +3,7 @@ import { formatDate, formatPrice } from "@/lib/format";
 import { adminListOffers } from "@/features/admin/queries";
 import { deleteOffer } from "@/features/admin/actions/offers";
 import { offerStatus } from "@/features/offers/schema";
+import { PreviewButton } from "@/features/admin/components/preview-panel";
 import { AdminPageHead } from "@/features/admin/components/admin-page-head";
 import { DeleteButton } from "@/features/admin/components/delete-button";
 import { IconEdit, IconPlus } from "@/components/icons";
@@ -24,9 +25,12 @@ export default async function OffersAdminPage() {
         title="Offers"
         meta={`${offers.filter((o) => offerStatus(o) === "live").length} live`}
         actions={
-          <Link href="/admin/offers/new" className="btn btn-primary">
-            <IconPlus size={18} /> Add offer
-          </Link>
+          <>
+            <PreviewButton path="/shop?deals=1" />
+            <Link href="/admin/offers/new" className="btn btn-primary">
+              <IconPlus size={18} /> Add offer
+            </Link>
+          </>
         }
       />
       <div className="rounded-lg border border-line bg-white">

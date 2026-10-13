@@ -46,6 +46,7 @@ export const paymentMethodSchema = z.object({
 
 export const HOME_SECTION_TYPES = {
   hero: "Banner carousel",
+  trust: "Why buy here (4 promises)",
   categories: "Category shortcuts",
   offers: "Offers",
   newest: "Newest book",
@@ -54,6 +55,8 @@ export const HOME_SECTION_TYPES = {
   collections: "Collection rows",
   collection_tiles: "Collection tiles",
   recent: "Recently viewed",
+  stats: "Shop in numbers (sold, readers, rating)",
+  testimonials: "What readers say (reviews)",
   journey: "How to order steps",
   faq: "FAQ",
 } as const;
@@ -94,12 +97,58 @@ export const generalSettingsSchema = z.object({
     .refine((v) => v.includes(TEMPLATE_TOKENS.list), `Must include ${TEMPLATE_TOKENS.list}`),
   response_time: z.string().trim().min(1).max(40),
   delivery_note: z.string().trim().max(120),
+  payment_methods: z.array(paymentMethodSchema).max(6),
+  how_to_buy_steps: z.array(stepSchema).min(1, "Keep at least one step").max(8),
+});
+
+/**
+ * Optional storefront features, each switchable in Admin > Notices and
+ * features. Picked from common book-shop patterns (Amazon, Rokomari, Kobo
+ * and conversion research) that fit a WhatsApp PDF shop; social proof uses
+ * real numbers only.
+ */
+export const FEATURES = {
+  sold_count: { label: "How many sold", hint: "“418 sold” on book cards and book pages", default: true },
+  category_rank: { label: "Bestseller rank", hint: "“#1 in Business” on the book page", default: true },
+  bundle: { label: "Buy together", hint: "The book plus two related books in one WhatsApp order, on the book page", default: true },
+  more_by_author: { label: "More by this author", hint: "A row on the book page", default: true },
+  tag_chips: { label: "Topic tags", hint: "Clickable tags on the book page", default: true },
+  trending_searches: { label: "Popular searches", hint: "Shown when someone opens the empty search box", default: true },
+  card_quick_actions: { label: "Quick preview and heart on cards", hint: "Appear on hover (always on phones)", default: true },
+  recent_sales_toast: { label: "Recent order notices", hint: "A small notice like “Freelance Taka was ordered 2 hours ago”, from your sales log, never with names", default: false },
+  floating_whatsapp: { label: "Floating WhatsApp button", hint: "Bottom corner of every page", default: true },
+  back_to_top: { label: "Back to top button", hint: "Appears after scrolling down", default: true },
+} as const;
+export type FeatureKey = keyof typeof FEATURES;
+export type FeatureFlags = Record<FeatureKey, boolean>;
+
+const hex = z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, "Use a colour like #d42d2d");
+/** An image setting: an uploaded file path or a full https link (GIF allowed). */
+const imageRef = z.string().trim().max(1000).nullable();
+
+export const POPUP_FREQUENCIES = { session: "Once per visit", day: "Once a day", always: "Every page load" } as const;
+
+export const storefrontSchema = z.object({
   announcement: z.string().trim().max(160),
   announcement_link: linkUrl,
   announcement_active: z.boolean(),
   announcement_dismissible: z.boolean(),
-  payment_methods: z.array(paymentMethodSchema).max(6),
-  how_to_buy_steps: z.array(stepSchema).min(1, "Keep at least one step").max(8),
+  announcement_bg: hex,
+  announcement_fg: hex,
+  announcement_image: imageRef,
+  hero_interval: z.coerce.number().int().min(0).max(30),
+  popup_enabled: z.boolean(),
+  popup_title: z.string().trim().max(80),
+  popup_body: z.string().trim().max(300),
+  popup_image: imageRef,
+  popup_button_label: z.string().trim().max(40),
+  popup_link: linkUrl,
+  popup_show_latest: z.boolean(),
+  popup_delay: z.coerce.number().int().min(0).max(60),
+  popup_autoclose: z.coerce.number().int().min(0).max(120),
+  popup_frequency: z.enum(Object.keys(POPUP_FREQUENCIES) as [keyof typeof POPUP_FREQUENCIES, ...(keyof typeof POPUP_FREQUENCIES)[]]),
+  features: z.record(z.string(), z.boolean()),
+  trending_searches: z.array(z.string().trim().min(1).max(40)).max(10),
 });
 
 export const navigationSchema = z.object({
@@ -139,7 +188,14 @@ export type FooterColumn = z.infer<typeof footerColumnSchema>;
 export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
 export type HomeSection = z.infer<typeof homeSectionSchema>;
 
+export type StorefrontSettings = Omit<z.infer<typeof storefrontSchema>, "features"> & {
+  features: FeatureFlags;
+  /** Changes on every save, so an edited pop-up shows again. */
+  popup_version: number;
+};
+
 export type SiteSettings = z.infer<typeof generalSettingsSchema> &
+  StorefrontSettings &
   z.infer<typeof navigationSchema> &
   z.infer<typeof homeLayoutSchema> &
   z.infer<typeof pagesContentSchema> &

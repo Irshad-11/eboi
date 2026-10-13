@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { announcePreviewChange } from "./preview-panel";
 import { useRouter } from "next/navigation";
 import { IconArrowDown, IconArrowUp } from "@/components/icons";
 import type { ActionResult } from "../action-result";
@@ -77,6 +78,7 @@ export function OrderList<T extends { id: string }>({
                   const res = await onSave(order);
                   setNotice(res.ok ? { tone: "ok", text: res.message ?? "Saved." } : { tone: "error", text: res.error });
                   router.refresh();
+                  announcePreviewChange();
                 })
               }
             >

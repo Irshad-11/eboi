@@ -16,6 +16,7 @@ export const ADMIN_NAV = [
   {
     group: "Storefront",
     items: [
+      { href: "/admin/storefront", label: "Notices and features", icon: "spark" },
       { href: "/admin/banners", label: "Banners", icon: "image" },
       { href: "/admin/home", label: "Home layout", icon: "layout" },
       { href: "/admin/navigation", label: "Menus and footer", icon: "link" },

@@ -20,7 +20,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/media/[...path]
   const ext = path.split(".").pop();
   return new NextResponse(file.stream(), {
     headers: {
-      "Content-Type": file.type || (ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg"),
+      "Content-Type": file.type || (ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : ext === "gif" ? "image/gif" : "image/jpeg"),
       "Content-Length": String(file.size),
       "Cache-Control": "public, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",

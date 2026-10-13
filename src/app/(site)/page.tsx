@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SECTIONS, collectionSection } from "@/config/analytics";
 import { HOME } from "@/config/site";
 import { htmlToText } from "@/lib/rich-text";
-import { getBookBySlug, getPublishedBooks } from "@/features/books/queries";
+import { getBookBySlug, getPublishedBooks, getShopStats, getTopReviews } from "@/features/books/queries";
 import { sortBooks } from "@/features/books/catalog";
 import { getCollections, autoCollectionBooks } from "@/features/collections/queries";
 import { getCategories } from "@/features/categories/queries";
@@ -14,6 +14,7 @@ import { CategoryShortcuts } from "@/features/home/category-shortcuts";
 import { OffersSection } from "@/features/home/offers-section";
 import { JourneySection } from "@/features/home/journey-section";
 import { FaqSection } from "@/features/home/faq-section";
+import { StatsStrip, Testimonials, TrustStrip } from "@/features/home/extra-sections";
 import { ProductRow } from "@/features/books/components/product-row";
 import { FeaturedCard } from "@/features/books/components/featured-card";
 import { CollectionLead, CollectionTile } from "@/features/books/components/collection-tile";
@@ -45,11 +46,22 @@ export default async function HomePage() {
   const newest = newestCard ? await getBookBySlug(newestCard.slug) : null;
   const homeCollections = collections.filter((c) => c.show_on_home && c.books.length > 0);
   const steps = settings.how_to_buy_steps.map((s) => ({ title: fillTokens(s.title, settings), body: fillTokens(s.body, settings) }));
+  const enabled = new Set(settings.home_sections.filter((x) => x.enabled).map((x) => x.type));
+  const [stats, reviews] = await Promise.all([
+    enabled.has("stats") ? getShopStats() : null,
+    enabled.has("testimonials") ? getTopReviews(8) : [],
+  ]);
 
   const render = (type: string) => {
     switch (type) {
       case "hero":
-        return <HeroSection key="hero" banners={banners} />;
+        return <HeroSection key="hero" banners={banners} interval={settings.hero_interval} />;
+      case "trust":
+        return <TrustStrip key="trust" responseTime={settings.response_time} payments={settings.payment_methods.map((m) => m.label)} />;
+      case "stats":
+        return stats ? <StatsStrip key="stats" stats={stats} responseTime={settings.response_time} /> : null;
+      case "testimonials":
+        return <Testimonials key="testimonials" reviews={reviews} />;
       case "categories":
         return <CategoryShortcuts key="categories" categories={categories} />;
       case "offers":

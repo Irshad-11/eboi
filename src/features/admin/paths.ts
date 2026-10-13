@@ -30,9 +30,9 @@ export function mediaExtension(mime: string): string | null {
 
 /** Paths must live in the book's own folder: a form cannot point at another book's file. */
 export function belongsToBook(path: string, bookId: string): boolean {
-  return path.startsWith(`${bookId}/`) && !path.includes("..") && /^[0-9a-f-]{36}\/[a-z0-9-]+\.(jpg|png|pdf)$/.test(path);
+  return path.startsWith(`${bookId}/`) && !path.includes("..") && /^[0-9a-f-]{36}\/[a-z0-9-]+\.(jpg|png|webp|gif|pdf)$/.test(path);
 }
 
 export function belongsToMedia(path: string, folder: MediaFolder, ownerId: string): boolean {
-  return path.startsWith(`${folder}/${ownerId}/`) && !path.includes("..") && /^[a-z]+\/[0-9a-f-]{36}\/[a-z0-9-]+\.(jpg|png|webp)$/.test(path);
+  return path.startsWith(`${folder}/${ownerId}/`) && !path.includes("..") && /^[a-z]+\/[0-9a-f-]{36}\/[a-z0-9-]+\.(jpg|png|webp|gif)$/.test(path);
 }

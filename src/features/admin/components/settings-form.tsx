@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { announcePreviewChange } from "./preview-panel";
 import { useRouter } from "next/navigation";
 import { publicEnv } from "@/lib/env";
 import type { PaymentMethod, SiteSettings, Step } from "@/features/settings/schema";
@@ -8,7 +9,7 @@ import { TEMPLATE_TOKENS } from "@/features/settings/schema";
 import { buildListMessage, buildSingleMessage, type MessageBook } from "@/features/whatsapp/message";
 import { saveGeneralSettings } from "../actions/settings";
 import { AdminCard } from "./admin-page-head";
-import { Field, Toggle } from "./field";
+import { Field } from "./field";
 import { ListEditor } from "./list-editor";
 import { Notice } from "./notice";
 
@@ -46,16 +47,15 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
             whatsapp_list_template: s.whatsapp_list_template,
             response_time: s.response_time,
             delivery_note: s.delivery_note,
-            announcement: s.announcement,
-            announcement_link: s.announcement_link,
-            announcement_active: s.announcement_active,
-            announcement_dismissible: s.announcement_dismissible,
             payment_methods: s.payment_methods,
             how_to_buy_steps: s.how_to_buy_steps,
           });
           setErrors(res.ok ? {} : (res.fieldErrors ?? {}));
           setNotice(res.ok ? { tone: "ok", text: res.message ?? "Saved." } : { tone: "error", text: res.error });
-          if (res.ok) router.refresh();
+          if (res.ok) {
+              router.refresh();
+              announcePreviewChange();
+            }
         });
       }}
     >
@@ -72,21 +72,6 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
           <Field label="Currency symbol" htmlFor="st-currency" error={errors.currency_symbol}>
             {text("currency_symbol", "st-currency")}
           </Field>
-        </div>
-      </AdminCard>
-
-      <AdminCard title="Announcement bar">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Text" htmlFor="st-ann" error={errors.announcement} className="sm:col-span-2">
-            {text("announcement", "st-ann", { maxLength: 160 })}
-          </Field>
-          <Field label="Link (optional)" htmlFor="st-ann-link" hint="/shop?deals=1 or https://…" error={errors.announcement_link}>
-            {text("announcement_link", "st-ann-link")}
-          </Field>
-          <div className="space-y-1">
-            <Toggle id="st-ann-on" label="Show the bar" checked={s.announcement_active} onChange={(c) => set("announcement_active", c)} />
-            <Toggle id="st-ann-x" label="Visitors can close it" checked={s.announcement_dismissible} onChange={(c) => set("announcement_dismissible", c)} />
-          </div>
         </div>
       </AdminCard>
 

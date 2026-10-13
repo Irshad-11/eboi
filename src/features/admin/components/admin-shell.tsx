@@ -22,6 +22,7 @@ import {
   IconReceipt,
   IconSearch,
   IconSettings,
+  IconSpark,
   IconTag,
   IconUpload,
 } from "@/components/icons";
@@ -45,6 +46,7 @@ const ICONS = {
   settings: IconSettings,
   chart: IconChart,
   database: IconDatabase,
+  spark: IconSpark,
 } as const;
 
 /** Admin frame: sidebar on desktop, top bar with a drawer on phones. */

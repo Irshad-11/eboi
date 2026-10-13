@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { announcePreviewChange } from "./preview-panel";
 import { useRouter } from "next/navigation";
 import { MEDIA_FOLDERS } from "@/config/storage";
 import { slugify } from "@/lib/slug";
@@ -57,6 +58,7 @@ export function CollectionForm({ collection, titleTemplate }: { collection: Coll
           setNotice({ tone: "ok", text: res.message ?? "Saved." });
           if (!collection) router.replace(`/admin/collections/${id}`);
           else router.refresh();
+      announcePreviewChange();
         });
       }}
     >

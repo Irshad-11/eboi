@@ -582,6 +582,18 @@
     }
   }
 
+  /* Pop-up notice: centred card on every screen size. */
+  dialog.dialog.promo-dialog {
+    margin: auto;
+    width: calc(100% - 2rem);
+    max-width: 26rem;
+    border-radius: var(--radius-lg);
+    overflow: hidden auto;
+  }
+  dialog.dialog.promo-dialog[open] {
+    animation: pop 180ms var(--ease-out);
+  }
+
   /* Left drawer (mobile menu, mobile filters). */
   dialog.drawer {
     margin: 0 auto 0 0;
@@ -696,5 +708,15 @@
   .reader-pages,
   .no-print {
     display: none !important;
+  }
+}
+
+/* Floating buttons and notices sit above the phone buy bar while it shows.
+   Unlayered on purpose, so it wins over the utility classes. */
+@media (max-width: 63.99rem) {
+  html[data-sticky-bar] .floating-tools,
+  html[data-sticky-bar] .sales-toast {
+    bottom: calc(5rem + env(safe-area-inset-bottom));
+    transition: bottom 200ms;
   }
 }

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { cn } from "@/lib/cn";
 import { langOf } from "@/lib/bangla";
+import { skipOptimizer } from "@/lib/media";
 
 type Props = {
   src: string | null;
@@ -33,7 +34,7 @@ export function BookCover({ src, title, author, alt, sizes, priority, className,
           fill
           sizes={sizes}
           priority={priority}
-          unoptimized={unoptimized}
+          unoptimized={unoptimized || skipOptimizer(src)}
         />
       ) : (
         <div

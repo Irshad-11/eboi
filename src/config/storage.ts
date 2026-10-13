@@ -15,6 +15,8 @@ export const MEDIA_FOLDERS = {
   collections: "collections",
   thumbs: "thumbs",
   seo: "seo",
+  /** Announcement bar and pop-up images. */
+  promo: "promo",
 } as const;
 
 export type MediaFolder = (typeof MEDIA_FOLDERS)[keyof typeof MEDIA_FOLDERS];

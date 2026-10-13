@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { formatPrice } from "@/lib/format";
-import { mediaUrl } from "@/lib/media";
+import { mediaUrl, skipOptimizer } from "@/lib/media";
 import { coverUrl } from "../cover";
 import type { BookCard } from "../types";
 import { BookCover } from "./book-cover";
@@ -23,7 +23,7 @@ export function CollectionTile({
     <Link href={`/collections/${slug}`} className="group block overflow-hidden rounded-lg border border-line bg-white transition-shadow hover:shadow-md">
       <div className="relative aspect-[4/3] overflow-hidden bg-brand-soft">
         {img ? (
-          <Image src={img} alt="" fill sizes="(min-width: 1024px) 300px, 50vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
+          <Image src={img} alt="" fill sizes="(min-width: 1024px) 300px, 50vw" unoptimized={skipOptimizer(img)} className="object-cover transition-transform duration-300 group-hover:scale-105" />
         ) : (
           <div className="absolute inset-0 flex items-end justify-center gap-2 px-4 pt-4">
             {books.slice(0, 3).map((b, i) => (

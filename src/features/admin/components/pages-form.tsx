@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { announcePreviewChange } from "./preview-panel";
 import { useRouter } from "next/navigation";
 import type { FaqItem } from "@/features/settings/schema";
 import { savePagesContent } from "../actions/settings";
@@ -30,7 +31,10 @@ export function PagesForm(props: Props) {
         start(async () => {
           const res = await savePagesContent({ about_content: about, terms_content: terms, how_to_order_content: howToOrder, faq_items: faq });
           setNotice(res.ok ? { tone: "ok", text: res.message ?? "Saved." } : { tone: "error", text: `${res.error} ${Object.values(res.fieldErrors ?? {})[0] ?? ""}` });
-          if (res.ok) router.refresh();
+          if (res.ok) {
+              router.refresh();
+              announcePreviewChange();
+            }
         });
       }}
     >

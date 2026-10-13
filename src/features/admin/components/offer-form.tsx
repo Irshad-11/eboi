@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { announcePreviewChange } from "./preview-panel";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/format";
 import { fromDhakaInput, toDhakaInput } from "@/lib/datetime";
@@ -59,6 +60,7 @@ export function OfferForm({ offer, books, collections }: Props) {
       setNotice({ tone: "ok", text: res.message ?? "Saved." });
       if (!o) router.replace(`/admin/offers/${res.data.id}`);
       else router.refresh();
+      announcePreviewChange();
     });
   }
 

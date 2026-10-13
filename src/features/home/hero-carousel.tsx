@@ -16,43 +16,42 @@ export type Slide = {
   alt: string;
   bg: string;
   fg: string;
+  /** Title, text and button drawn on top of the image. */
+  overlay: boolean;
   /** Pre-built <picture> markup for image slides (art-directed desktop/mobile). */
   picture: ReactNode | null;
 };
 
-const AUTOPLAY_MS = 6000;
-
 /**
- * Banner carousel, following common carousel research (Baymard):
- * - autoplay only on devices that can hover, every 6 seconds, paused on
- *   hover/focus, and stopped for good once the visitor moves it themselves;
- * - no autoplay on touch screens; swipe instead;
- * - arrows on both sides, dots below, keyboard accessible;
- * - text slides are real HTML text; the frame keeps a fixed aspect ratio so
- *   the page never jumps while images load.
+ * Banner carousel:
+ * - moves by itself every few seconds (the admin sets the speed, 0 turns it
+ *   off) on phones and computers, and loops;
+ * - pauses while the pointer is over it, while a finger is on it, while it
+ *   has keyboard focus and while the tab is hidden;
+ * - a manual move (arrow, dot, swipe) restarts the timer;
+ * - arrows on both sides, dots below; the frame keeps a fixed aspect ratio
+ *   so the page never jumps while images load.
  */
-export function HeroCarousel({ slides }: { slides: Slide[] }) {
+export function HeroCarousel({ slides, interval = 5 }: { slides: Slide[]; interval?: number }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [stopped, setStopped] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const touch = useRef<{ x: number; y: number } | null>(null);
   const count = slides.length;
 
-  const go = useCallback(
-    (i: number, manual = true) => {
-      setIndex(((i % count) + count) % count);
-      if (manual) setStopped(true);
-    },
-    [count],
-  );
+  const go = useCallback((i: number) => setIndex(((i % count) + count) % count), [count]);
 
   useEffect(() => {
-    if (count < 2 || paused || stopped) return;
-    if (!window.matchMedia("(hover: hover)").matches) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = setTimeout(() => go(index + 1, false), AUTOPLAY_MS);
+    const onVis = () => setHidden(document.visibilityState === "hidden");
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  useEffect(() => {
+    if (count < 2 || paused || hidden || interval <= 0) return;
+    const t = setTimeout(() => go(index + 1), interval * 1000);
     return () => clearTimeout(t);
-  }, [index, paused, stopped, count, go]);
+  }, [index, paused, hidden, count, go, interval]);
 
   if (!count) return null;
 
@@ -62,18 +61,20 @@ export function HeroCarousel({ slides }: { slides: Slide[] }) {
       aria-label="Featured"
       data-section={SECTIONS.hero}
       className="group relative overflow-hidden rounded-lg bg-muted"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
+      onPointerEnter={(e) => e.pointerType === "mouse" && setPaused(true)}
+      onPointerLeave={(e) => e.pointerType === "mouse" && setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
       onTouchStart={(e) => {
         const t = e.touches[0];
         if (t) touch.current = { x: t.clientX, y: t.clientY };
+        setPaused(true);
       }}
       onTouchEnd={(e) => {
         const start = touch.current;
         const t = e.changedTouches[0];
         touch.current = null;
+        setPaused(false);
         if (!start || !t) return;
         const dx = t.clientX - start.x;
         if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(t.clientY - start.y)) go(index + (dx < 0 ? 1 : -1));
@@ -137,6 +138,19 @@ function SlideBody({ slide: s }: { slide: Slide }) {
   const onClick = () => track("banner_click", { section: SECTIONS.hero, dedupe: `banner_click|${s.id}` });
   const isInternal = s.href.startsWith("/");
 
+  if (s.picture && s.overlay) {
+    return (
+      <div className="absolute inset-0" style={{ color: s.fg }}>
+        <span className="absolute inset-0">{s.picture}</span>
+        <span className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent" aria-hidden="true" />
+        <SlideText slide={s} onClick={onClick} isInternal={isInternal} />
+        {s.href && !s.buttonLabel && (
+          <Link href={s.href} onClick={onClick} className="absolute inset-0" aria-label={s.alt || s.title} />
+        )}
+      </div>
+    );
+  }
+
   if (s.picture) {
     const img = <span className="absolute inset-0">{s.picture}</span>;
     if (!s.href) return img;
@@ -152,8 +166,16 @@ function SlideBody({ slide: s }: { slide: Slide }) {
   }
 
   return (
-    <div className="absolute inset-0 flex items-center" style={{ background: s.bg, color: s.fg }}>
-      <div className="w-full px-6 sm:px-10 md:max-w-[60%] md:px-14">
+    <div className="absolute inset-0" style={{ background: s.bg, color: s.fg }}>
+      <SlideText slide={s} onClick={onClick} isInternal={isInternal} />
+    </div>
+  );
+}
+
+function SlideText({ slide: s, onClick, isInternal }: { slide: Slide; onClick: () => void; isInternal: boolean }) {
+  return (
+    <div className="absolute inset-0 flex items-center">
+      <div className="relative w-full px-6 sm:px-10 md:max-w-[60%] md:px-14">
         {s.title && <p className="text-xl leading-tight font-bold sm:text-2xl">{s.title}</p>}
         {s.subtitle && <p className="mt-2 line-clamp-3 text-base opacity-90 sm:text-md">{s.subtitle}</p>}
         {s.buttonLabel && s.href && (

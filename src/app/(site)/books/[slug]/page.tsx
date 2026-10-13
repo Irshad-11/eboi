@@ -3,16 +3,17 @@ import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { SECTIONS } from "@/config/analytics";
 import { absoluteUrl } from "@/lib/env";
-import { formatDate, formatPrice } from "@/lib/format";
+import { formatCompact, formatDate, formatPrice } from "@/lib/format";
 import { langOf } from "@/lib/bangla";
 import { mediaUrl } from "@/lib/media";
 import { htmlToText } from "@/lib/rich-text";
-import { getBookBySlug, getBookReviews, getPublishedBooks, relatedBooks, resolveOldBookSlug } from "@/features/books/queries";
+import { categoryRank, getBookBySlug, getBookReviews, getPublishedBooks, relatedBooks, resolveOldBookSlug } from "@/features/books/queries";
 import { getCategorySlugMap } from "@/features/categories/queries";
 import { getSettings } from "@/features/settings/queries";
 import { coverUrl } from "@/features/books/cover";
 import { DiscountBadge, StatusBadge } from "@/features/books/components/book-badges";
 import { PriceTag } from "@/features/books/components/price-tag";
+import { BookCover } from "@/features/books/components/book-cover";
 import { Rating } from "@/features/books/components/rating";
 import { PreviewButton } from "@/features/books/components/preview-button";
 import { ProductRow } from "@/features/books/components/product-row";
@@ -21,7 +22,7 @@ import { ProductTabs, type Tab } from "@/features/book-detail/product-tabs";
 import { ShareButton } from "@/features/book-detail/share-button";
 import { StickyBuyBar } from "@/features/book-detail/sticky-buy-bar";
 import { TrackSection } from "@/features/analytics/track-section";
-import { BuyButton } from "@/features/whatsapp/buy-button";
+import { BundleButton, BuyButton } from "@/features/whatsapp/buy-button";
 import { toMessageBook } from "@/features/whatsapp/message";
 import { ListButton } from "@/features/my-list/list-button";
 import { BookViewTracker } from "@/features/my-list/recent-tracker";
@@ -69,6 +70,13 @@ export default async function BookPage({ params }: Props) {
   const [all, settings, reviews, catMap] = await Promise.all([getPublishedBooks(), getSettings(), getBookReviews(book.id), getCategorySlugMap()]);
   const symbol = settings.currency_symbol;
   const related = relatedBooks(book, all, 12);
+  const f = settings.features;
+  const rank = f.category_rank ? categoryRank(book, all) : null;
+  const byAuthor = f.more_by_author && book.author ? all.filter((b) => b.author === book.author && b.id !== book.id).slice(0, 12) : [];
+  // Buy together: this book plus the two closest matches that are not already in the author row.
+  const bundle = f.bundle ? [book, ...related.filter((b) => !byAuthor.some((a) => a.id === b.id)).slice(0, 2)] : [];
+  const bundleTotal = bundle.reduce((n, b) => n + b.pricing.final, 0);
+  const bundleWas = bundle.reduce((n, b) => n + (b.pricing.was ?? b.pricing.final), 0);
   const msgBook = toMessageBook(book);
   const readerBook = { ...msgBook, page_count: book.page_count, preview_page_count: book.preview_page_count };
   const path = `/books/${book.slug}`;
@@ -221,7 +229,13 @@ export default async function BookPage({ params }: Props) {
                   <Rating value={Number(book.rating)} count={book.rating_count} />
                 </a>
               )}
+              {f.sold_count && book.total_sells > 0 && <span className="text-sm text-text-2 tnum">{formatCompact(book.total_sells)} sold</span>}
             </div>
+            {rank && (
+              <Link href={catPath} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#fff4e0] px-2.5 py-1 text-sm font-semibold text-[#8a4b00] hover:underline">
+                <IconStar size={14} className="text-star" />#{rank} in {book.category}
+              </Link>
+            )}
 
             <div className="mt-4 rounded-md bg-muted px-4 py-3">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -258,6 +272,17 @@ export default async function BookPage({ params }: Props) {
                 ))}
             </ul>
 
+            {f.tag_chips && book.tags.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <span className="text-sm text-text-3">Topics:</span>
+                {book.tags.slice(0, 8).map((t) => (
+                  <Link key={t} href={`/shop?q=${encodeURIComponent(t)}`} lang={langOf(t)} className="rounded-full bg-brand-soft px-2.5 py-0.5 text-sm text-brand-ink hover:bg-brand hover:text-white">
+                    {t}
+                  </Link>
+                ))}
+              </div>
+            )}
+
             <div id="buy-box" className="mt-5 flex flex-wrap gap-2">
               <BuyButton book={msgBook} section={SECTIONS.detailBuyBox} size="lg" className="w-full sm:w-auto sm:flex-1" />
               {hasPreview && <PreviewButton book={readerBook} className="btn-lg flex-1 sm:flex-none" />}
@@ -288,11 +313,59 @@ export default async function BookPage({ params }: Props) {
           </TrackSection>
         </article>
 
+        {bundle.length >= 2 && (
+          <section className="mt-6 rounded-lg border border-line bg-white p-4 md:p-6" aria-labelledby="bundle-title">
+            <h2 id="bundle-title" className="text-md font-semibold">
+              Buy together
+            </h2>
+            <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-center">
+              <ul className="grid flex-1 grid-cols-3 gap-5 sm:gap-8">
+                {bundle.map((b, i) => (
+                  <li key={b.id} className="relative min-w-0">
+                    {i > 0 && (
+                      <span className="absolute top-[30%] -left-2.5 -translate-x-1/2 text-xl font-semibold text-text-3 sm:-left-4" aria-hidden="true">
+                        +
+                      </span>
+                    )}
+                    <Link href={`/books/${b.slug}`} className="group block min-w-0">
+                      <BookCover src={coverUrl(b)} alt={b.cover_alt} title={b.title} author={b.author} sizes="120px" className="mx-auto max-w-[7.5rem]" />
+                      <p lang={langOf(b.title)} className="mt-1.5 line-clamp-2 text-center text-sm leading-snug font-medium group-hover:text-brand">
+                        {i === 0 ? "This book" : b.title}
+                      </p>
+                      <div className="flex justify-center">
+                        <PriceTag pricing={b.pricing} symbol={symbol} size="sm" />
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <div className="rounded-md bg-muted p-4 md:w-72">
+                <p className="text-sm text-text-2">Total for {bundle.length} books</p>
+                <p className="mt-0.5 flex items-baseline gap-2">
+                  <span className="text-xl font-bold text-text tnum">{formatPrice(bundleTotal, symbol)}</span>
+                  {bundleWas > bundleTotal && <span className="price-was text-sm">{formatPrice(bundleWas, symbol)}</span>}
+                </p>
+                <BundleButton books={bundle.map(toMessageBook)} section={SECTIONS.detailBuyBox} className="btn-block mt-3" />
+              </div>
+            </div>
+          </section>
+        )}
+
         <TrackSection name={SECTIONS.detailTabs} bookId={book.id} className="mt-6" aria-label="Book information">
           <ProductTabs tabs={tabs} />
         </TrackSection>
       </div>
 
+      {byAuthor.length > 0 && (
+        <ProductRow
+          id="author-title"
+          title={`More by ${book.author}`}
+          books={byAuthor}
+          symbol={symbol}
+          section={SECTIONS.detailRelated}
+          href={`/shop?q=${encodeURIComponent(book.author)}`}
+        />
+      )}
       <ProductRow id="related-title" title="You may also like" books={related} symbol={symbol} section={SECTIONS.detailRelated} href={catPath} />
       <ContinueBrowsing excludeId={book.id} />
       <div className="h-16 lg:hidden" aria-hidden="true" />

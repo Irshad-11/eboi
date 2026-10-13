@@ -3,18 +3,37 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { IconSearch, IconClose } from "@/components/icons";
+import { IconSearch, IconClose, IconWhatsApp } from "@/components/icons";
+import { SECTIONS } from "@/config/analytics";
+import { track } from "@/features/analytics/client";
+import { whatsappLink } from "@/features/whatsapp/message";
 import { useShop } from "./shop-context";
 import { CompactCard } from "@/features/books/components/compact-card";
 import type { BookLite } from "@/features/books/types";
 
+/** How long typing must pause before a term counts as a real search. */
+const SETTLE_MS = 2500;
+
+/**
+ * Logs a typed search as a "search" event even without Enter, but only when
+ * it looks intentional: at least 3 characters, containing a letter or digit,
+ * and the visitor stopped typing (or left the box, or opened a result).
+ * Half-typed words never reach Admin > Search terms.
+ */
+function logTypedSearch(term: string, resultCount: number) {
+  const t = term.trim();
+  if (t.length < 3 || !/[\p{L}\p{N}]/u.test(t)) return;
+  track("search", { term: t.slice(0, 80), resultCount, section: SECTIONS.searchSuggest, dedupe: `search|${t.toLowerCase()}` });
+}
+
 /**
  * Header search with live suggestions (cover, title, price). Arrow keys move
  * through results, Enter opens one, Escape closes. Submitting goes to the shop.
+ * An empty box shows popular searches; no match offers to ask on WhatsApp.
  */
 export function SearchBox({ autoFocus, onDone, className }: { autoFocus?: boolean; onDone?: () => void; className?: string }) {
   const router = useRouter();
-  const { currency_symbol } = useShop();
+  const { currency_symbol, trending_searches, features, whatsapp_number } = useShop();
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState("");
@@ -45,9 +64,18 @@ export function SearchBox({ autoFocus, onDone, className }: { autoFocus?: boolea
     };
   }, [q]);
 
+  // Typed searches count once typing pauses on a term with known results.
+  useEffect(() => {
+    if (!result.q || result.q !== q.trim()) return;
+    const t = setTimeout(() => logTypedSearch(result.q, result.total), SETTLE_MS);
+    return () => clearTimeout(t);
+  }, [result, q]);
+
   const term = q.trim();
   const show = open && term.length >= 2 && result.q === term;
   const books = show ? result.books : [];
+  const trending = features.trending_searches ? trending_searches : [];
+  const showTrending = open && term.length === 0 && trending.length > 0;
 
   function submit(e?: React.FormEvent) {
     e?.preventDefault();
@@ -79,7 +107,10 @@ export function SearchBox({ autoFocus, onDone, className }: { autoFocus?: boolea
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onBlur={() => {
+          if (result.q && result.q === term) logTypedSearch(result.q, result.total);
+          setTimeout(() => setOpen(false), 150);
+        }}
         onKeyDown={(e) => {
           if (!show) return;
           if (e.key === "ArrowDown") {
@@ -123,7 +154,24 @@ export function SearchBox({ autoFocus, onDone, className }: { autoFocus?: boolea
       {show && (
         <div id={listId} role="listbox" className="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-lg border border-line bg-white shadow-lg">
           {books.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-text-3">No books match “{term}”.</p>
+            <div className="px-4 py-3">
+              <p className="text-sm font-semibold">No books match “{term}”</p>
+              <p className="mt-0.5 text-sm text-text-3">Check the spelling, or try the author or Book ID.</p>
+              {whatsapp_number && (
+                <a
+                  href={whatsappLink(whatsapp_number, `Hi eBoi! Do you have “${term}”?`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => logTypedSearch(term, 0)}
+                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:underline"
+                >
+                  <IconWhatsApp size={16} className="text-whatsapp" />
+                  Ask us for this book on WhatsApp
+                </a>
+              )}
+              {trending.length > 0 && <TrendingChips terms={trending} onPick={(t) => { setQ(t); inputRef.current?.focus(); }} />}
+            </div>
           ) : (
             <>
               <ul className="max-h-[60vh] overflow-y-auto py-1">
@@ -138,6 +186,7 @@ export function SearchBox({ autoFocus, onDone, className }: { autoFocus?: boolea
                     onMouseDown={(e) => e.preventDefault()}
                   >
                     <CompactCard book={b} symbol={currency_symbol} dense onNavigate={() => {
+                      logTypedSearch(term, result.total);
                       setOpen(false);
                       onDone?.();
                     }} />
@@ -156,6 +205,33 @@ export function SearchBox({ autoFocus, onDone, className }: { autoFocus?: boolea
           )}
         </div>
       )}
+      {showTrending && (
+        <div className="absolute inset-x-0 top-full z-50 mt-2 rounded-lg border border-line bg-white px-4 py-3 shadow-lg">
+          <TrendingChips terms={trending} onPick={(t) => { setQ(t); inputRef.current?.focus(); }} />
+        </div>
+      )}
     </form>
+  );
+}
+
+function TrendingChips({ terms, onPick }: { terms: string[]; onPick: (t: string) => void }) {
+  return (
+    <div className="mt-2 first:mt-0">
+      <p className="text-sm font-semibold text-text-2">Popular searches</p>
+      <ul className="mt-2 flex flex-wrap gap-1.5">
+        {terms.map((t) => (
+          <li key={t}>
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onPick(t)}
+              className="rounded-full border border-line bg-muted px-3 py-1 text-sm hover:border-brand hover:text-brand"
+            >
+              {t}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

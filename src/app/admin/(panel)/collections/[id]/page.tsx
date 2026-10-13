@@ -4,6 +4,7 @@ import { z } from "zod";
 import { adminBookPicker, adminGetCollection } from "@/features/admin/queries";
 import { deleteCollection } from "@/features/admin/actions/collections";
 import { getSettings } from "@/features/settings/queries";
+import { PreviewButton } from "@/features/admin/components/preview-panel";
 import { AdminPageHead } from "@/features/admin/components/admin-page-head";
 import { CollectionForm } from "@/features/admin/components/collection-form";
 import { CollectionBooksEditor } from "@/features/admin/components/collection-books-editor";
@@ -25,6 +26,7 @@ export default async function EditCollectionPage({ params }: { params: Promise<{
         back={{ href: "/admin/collections", label: "Collections" }}
         actions={
           <>
+            <PreviewButton path={`/collections/${collection.slug}`} />
             <Link href={`/collections/${collection.slug}`} target="_blank" className="btn btn-secondary btn-sm">
               <IconExternal size={16} /> View
             </Link>

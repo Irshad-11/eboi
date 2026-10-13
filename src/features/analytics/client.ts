@@ -89,6 +89,8 @@ function referrerHost(): string | null {
 
 export function track(type: EventType, data: TrackData = {}): void {
   if (typeof window === "undefined" || isBotLike()) return;
+  // Pages shown inside the admin preview are not visits.
+  if (window.self !== window.top) return;
   const key = (data.dedupe ?? [type, data.bookId, data.section, data.term?.toLowerCase(), data.page].join("|")).slice(0, 200);
   if (seen().has(key)) return;
   markSeen(key);

@@ -24,11 +24,17 @@ export function StickyBuyBar({ book, targetId }: { book: MessageBook & { id: str
         if (e.target === box) past = !e.isIntersecting && e.boundingClientRect.top < 0;
         else atFooter = e.isIntersecting;
       }
-      setShow(past && !atFooter);
+      const visible = past && !atFooter;
+      setShow(visible);
+      // Floating buttons move up while the bar is showing.
+      document.documentElement.toggleAttribute("data-sticky-bar", visible);
     });
     io.observe(box);
     if (footer) io.observe(footer);
-    return () => io.disconnect();
+    return () => {
+      io.disconnect();
+      document.documentElement.removeAttribute("data-sticky-bar");
+    };
   }, [targetId]);
 
   return (

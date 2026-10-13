@@ -359,7 +359,7 @@ grant all on public.categories, public.banners, public.book_reviews, public.page
 -- images, preview thumbnails and share images. Served by /api/media/...
 -- -----------------------------------------------------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('media', 'media', false, 3145728, array['image/jpeg', 'image/png', 'image/webp'])
+values ('media', 'media', false, 5242880, array['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 on conflict (id) do update set
   public = false,
   file_size_limit = excluded.file_size_limit,
@@ -384,5 +384,34 @@ drop policy if exists eboi_storage_admin_delete on storage.objects;
 create policy eboi_storage_admin_delete on storage.objects
   for delete to authenticated
   using (bucket_id in ('covers', 'previews', 'media') and public.is_admin());
+
+-- Covers may also be WebP or GIF now, up to 4 MB.
+update storage.buckets
+set file_size_limit = 4194304, allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+where id = 'covers';
+
+-- -----------------------------------------------------------------------------
+-- Notices and features (Admin > Notices and features)
+-- -----------------------------------------------------------------------------
+alter table public.site_settings add column if not exists announcement_bg text not null default '#d42d2d';
+alter table public.site_settings add column if not exists announcement_fg text not null default '#ffffff';
+alter table public.site_settings add column if not exists announcement_image text;
+alter table public.site_settings add column if not exists hero_interval integer not null default 5;
+alter table public.site_settings add column if not exists popup_enabled boolean not null default false;
+alter table public.site_settings add column if not exists popup_title text not null default '';
+alter table public.site_settings add column if not exists popup_body text not null default '';
+alter table public.site_settings add column if not exists popup_image text;
+alter table public.site_settings add column if not exists popup_button_label text not null default '';
+alter table public.site_settings add column if not exists popup_link text not null default '';
+alter table public.site_settings add column if not exists popup_show_latest boolean not null default true;
+alter table public.site_settings add column if not exists popup_delay integer not null default 2;
+alter table public.site_settings add column if not exists popup_autoclose integer not null default 0;
+alter table public.site_settings add column if not exists popup_frequency text not null default 'session';
+alter table public.site_settings add column if not exists popup_version bigint not null default 0;
+alter table public.site_settings add column if not exists features jsonb not null default '{}'::jsonb;
+alter table public.site_settings add column if not exists trending_searches text[] not null default '{}';
+
+-- Banner slides can show their text on top of the image.
+alter table public.banners add column if not exists overlay_text boolean not null default false;
 
 -- Done.

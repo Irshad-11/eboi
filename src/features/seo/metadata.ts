@@ -2,7 +2,7 @@ import "server-only";
 import type { Metadata } from "next";
 import { SITE } from "@/config/site";
 import { absoluteUrl } from "@/lib/env";
-import { mediaUrl } from "@/lib/media";
+import { absoluteImage, mediaUrl } from "@/lib/media";
 import type { PageKey } from "@/lib/supabase/database.types";
 import { getSettings } from "@/features/settings/queries";
 import { getPageSeo } from "./page-seo";
@@ -59,7 +59,7 @@ export async function pageMetadata(input: Input): Promise<Metadata> {
   const canonical = canonicalOf(seo.canonical_url, input.path);
   const noindex = settings.site_noindex || Boolean(seo.noindex) || Boolean(input.noindex);
   const ogPath = seo.og_image_path || (isHome ? settings.default_og_image_path : null);
-  const images = ogPath ? [absoluteUrl(mediaUrl(ogPath)!)] : undefined;
+  const images = ogPath ? [absoluteImage(mediaUrl(ogPath)!, absoluteUrl("").replace(/\/$/, ""))] : undefined;
   const absolute = isHome || input.absoluteTitle;
 
   return {

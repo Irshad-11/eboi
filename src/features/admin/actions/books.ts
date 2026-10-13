@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { BUCKETS, MEDIA_FOLDERS } from "@/config/storage";
 import { sanitizeRichText } from "@/lib/rich-text";
+import { isExternalUrl, isValidImageUrl } from "@/lib/media";
 import { createSessionClient } from "@/lib/supabase/server";
 import { bookInputSchema, bookJsonSchema, type BookFormValues } from "@/features/books/schema";
 import { requireAdmin } from "../auth";
@@ -11,7 +12,7 @@ import { belongsToBook, belongsToMedia } from "../paths";
 import { removeFiles, verifyCover, verifyMediaImage, verifyPreview } from "../storage.server";
 import { dbError, fail, zodFieldErrors, type ActionResult } from "../action-result";
 
-const fileChange = z.union([z.object({ path: z.string().max(200) }), z.object({ remove: z.literal(true) })]).nullish();
+const fileChange = z.union([z.object({ path: z.string().max(1000) }), z.object({ remove: z.literal(true) })]).nullish();
 
 const reviewSchema = z.object({
   author_name: z.string().trim().min(1, "Add a name").max(80),
@@ -31,7 +32,7 @@ const saveSchema = z.object({
   preview: fileChange,
   /** New thumbnails made from a new preview (replace the old set). */
   thumbs: z.array(z.string().max(200)).max(8).nullish(),
-  ogImage: z.string().max(200).nullable().optional(),
+  ogImage: z.string().max(1000).nullable().optional(),
   reviews: z.array(reviewSchema).max(50).nullish(),
 });
 
@@ -83,7 +84,13 @@ export async function saveBook(input: SaveBookInput): Promise<ActionResult<{ id:
   }
 
   if (newCover) {
-    const msg = belongsToBook(newCover, id) ? await verifyCover(newCover) : "Cover is not in this book's folder.";
+    const msg = isExternalUrl(newCover)
+      ? isValidImageUrl(newCover)
+        ? null
+        : "Use a full https:// link to the cover image."
+      : belongsToBook(newCover, id)
+        ? await verifyCover(newCover)
+        : "Cover is not in this book's folder.";
     if (msg) {
       await cleanupNew();
       return fail(msg, { cover: msg });
@@ -106,7 +113,13 @@ export async function saveBook(input: SaveBookInput): Promise<ActionResult<{ id:
     }
   }
   if (ogImage) {
-    const msg = ownOg(ogImage) ? await verifyMediaImage(ogImage) : "Share image is not in this book's folder.";
+    const msg = isExternalUrl(ogImage)
+      ? isValidImageUrl(ogImage)
+        ? null
+        : "Use a full https:// image link."
+      : ownOg(ogImage)
+        ? await verifyMediaImage(ogImage)
+        : "Share image is not in this book's folder.";
     if (msg) {
       await cleanupNew();
       return fail(msg, { og_image_path: msg });

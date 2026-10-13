@@ -31,6 +31,8 @@ type Props = {
   keepOrder?: boolean;
   hideCategory?: boolean;
   offerTitle?: string;
+  /** Replaces the plain title row (category and collection pages have their own look). */
+  header?: ReactNode;
   /** Books outside this listing; a short or empty result list is followed by a row of them. */
   others?: BookCard[];
 };
@@ -83,13 +85,17 @@ export function CatalogView(p: Props) {
     <>
     <div className={more.length ? "container-x pt-4" : "container-x pt-4 pb-10"}>
       {p.breadcrumbs}
-      <div className="mt-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
-        <h1 className="text-xl font-semibold md:text-2xl">{p.title}</h1>
-        <p className="text-sm text-text-3" aria-live="polite">
-          {results.length} {results.length === 1 ? "book" : "books"}
-        </p>
-      </div>
-      {p.intro && <div className="mt-2 max-w-3xl">{p.intro}</div>}
+      {p.header ?? (
+        <>
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+            <h1 className="text-xl font-semibold md:text-2xl">{p.title}</h1>
+            <p className="text-sm text-text-3" aria-live="polite">
+              {results.length} {results.length === 1 ? "book" : "books"}
+            </p>
+          </div>
+          {p.intro && <div className="mt-2 max-w-3xl">{p.intro}</div>}
+        </>
+      )}
 
       <div className="mt-5 grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
         <aside className="hidden lg:block" aria-label="Filters">
@@ -139,7 +145,7 @@ export function CatalogView(p: Props) {
 
       {p.after && <div className="mt-8 rounded-lg border border-line bg-white p-5 md:p-6">{p.after}</div>}
 
-      {params.q && <TrackOnMount type="search" term={params.q} resultCount={results.length} section={SECTIONS.shopSearch} />}
+      {params.q && <TrackOnMount type="search" term={params.q} resultCount={results.length} section={SECTIONS.shopSearch} dedupe={`search|${params.q.trim().toLowerCase()}`} />}
       {filterTerm && <TrackOnMount type="filter" term={filterTerm.slice(0, 80)} resultCount={results.length} section={SECTIONS.shopFilters} />}
     </div>
     {more.length > 0 && (

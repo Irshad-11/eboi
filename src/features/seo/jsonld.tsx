@@ -1,5 +1,6 @@
 import { SITE } from "@/config/site";
 import { absoluteUrl } from "@/lib/env";
+import { absoluteImage } from "@/lib/media";
 import { coverUrl } from "@/features/books/cover";
 import { htmlToText } from "@/lib/rich-text";
 import type { BookDetail } from "@/features/books/types";
@@ -78,7 +79,7 @@ export function bookJsonLd(book: BookDetail): Json {
     ...(book.subtitle ? { alternativeHeadline: book.subtitle } : {}),
     url,
     sku: book.book_code,
-    ...(cover ? { image: absoluteUrl(cover) } : {}),
+    ...(cover ? { image: absoluteImage(cover, absoluteUrl("").replace(/\/$/, "")) } : {}),
     description: book.seo_description || htmlToText(book.description).slice(0, 500),
     ...(book.author ? { author: { "@type": "Person", name: book.author } } : {}),
     bookFormat: "https://schema.org/EBook",
